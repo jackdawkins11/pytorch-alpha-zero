@@ -47,17 +47,14 @@ class CCRLDataset( Dataset ):
     Subclass of torch.utils.data.Dataset for the ccrl dataset.
     """
 
-    def __init__( self, ccrl_dir, test=False ):
+    def __init__( self, ccrl_dir ):
         """
         Args:
             ccrl_dir (string) Path to directory containing
                 pgn files with names 0.pgn, 1.pgn, 2.pgn, etc.
-            test (bool) specifies whether or not the dataset will be used for
-                training or testing
         """
         self.ccrl_dir = ccrl_dir
         self.pgn_file_names = os.listdir( ccrl_dir )
-        self.testing = test
 
     def __len__( self ):
         """
@@ -99,19 +96,9 @@ class CCRLDataset( Dataset ):
 
         winner = parseResult( game.headers[ 'Result' ] )
 
-        position, policy, value = encoder.encodeTrainingPoint( board, next_move, winner )
-
-        if not self.testing:
-
-            return { 'position': torch.from_numpy( position ),
-                 'policy': torch.Tensor( [policy] ).type( dtype=torch.long ),
-                 'value': torch.Tensor( [value] ) }
-
-        else:
-
-            policyMask = encoder.getLegalMoveMask( board )
-
-            return { 'position': torch.from_numpy( position ),
+        position, policy, value, mask = encoder.encodeTrainingPoint( board, next_move, winner )
+            
+        return { 'position': torch.from_numpy( position ),
                  'policy': torch.Tensor( [policy] ).type( dtype=torch.long ),
                  'value': torch.Tensor( [value] ),
-                 'mask': torch.from_numpy( policyMask ) }
+                 'mask': torch.from_numpy( mask ) }

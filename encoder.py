@@ -231,6 +231,7 @@ def encodeTrainingPoint( board, move, winner ):
         positionPlanes (numpy.array shape=(16,8,8) dtype=float32) the encoded position
         moveIdx (int) index of the encoded target move
         winner (float) the winner of the game 
+        mask (numpy.array (72, 8, 8) int32) the legal move mask
     """
 
     #Flip everything if black's turn
@@ -245,5 +246,7 @@ def encodeTrainingPoint( board, move, winner ):
 
     moveIdx = planeIdx * 64 + rankIdx * 8 + fileIdx
 
-    return positionPlanes, moveIdx, float( winner )
+    mask = getLegalMoveMask( board )
+
+    return positionPlanes, moveIdx, float( winner ), mask
 

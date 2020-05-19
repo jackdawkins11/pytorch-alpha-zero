@@ -21,7 +21,7 @@ def train():
 
     train_ds = CCRLDataset( ccrl_train_dir )
 
-    test_ds = CCRLDataset( ccrl_test_dir, test=True )
+    test_ds = CCRLDataset( ccrl_test_dir )
 
     train_batch_size = 64
 
