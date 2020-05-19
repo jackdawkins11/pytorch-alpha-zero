@@ -6,8 +6,12 @@ def encodePosition( board ):
     """
     Encodes a chess position as a vector. The first 12 planes represent
     the different pieces. The next 4 represent castling rights.
+    
     Args:
         board (chess.Board) the position to be encoded.
+
+    Returns:
+        planes (numpy.array (16,8,8) float32) the array encoding this position
     """
     planes = np.zeros( (16, 8, 8), dtype=np.float32 )
 
@@ -103,13 +107,19 @@ def encodePosition( board ):
 
 def moveToIdx( move ):
     """
-    Maps a legal move to an index in ( 72, 8, 8)
+    Maps a legal move to an index in (72, 8, 8)
     Each of the 72 planes represents a different direction
     and distance: rook and bishop directions with distance (64 planes)
     and 8 horse directions.
     The location in the plane specifies the start square.
+    
     Args:
         move (chess.Move) the move to be encoded.
+
+    Returns:
+        directionAndDistancePlane (int) the plane the move maps to
+        from_rank (int) the moves starting rank
+        from_file (int) the moves starting file
     """
 
     from_rank = chess.square_rank( move.from_square )
@@ -172,8 +182,12 @@ def moveToIdx( move ):
 def getLegalMoveMask( board ):
     """
     Returns a mask encoding the legal moves.
+    
     Args:
         board (chess.Board) the chess position.
+
+    Returns:
+        mask (numpy.array (72, 8, 8) int32) the legal move mask
     """
     mask = np.zeros( (72, 8, 8), dtype=np.int32 )
     
@@ -186,8 +200,12 @@ def getLegalMoveMask( board ):
 def mirrorMove( move ):
     """
     Mirrors a move vertically.
+
     Args:
         move (chess.Move) the move to be flipped
+
+    Returns:
+        (chess.Move) the mirrored move
     """
 
     from_square = move.from_square
@@ -199,27 +217,33 @@ def mirrorMove( move ):
 
     return chess.Move( new_from_square, new_to_square )
 
-def encodeTrainingPoint( board, bestMove, winner ):
+def encodeTrainingPoint( board, move, winner ):
     """
     Encodes a position, move, and winner as vectors.
+    
     Args:
         board (chess.Board) the chess position.
-        bestMove (chess.Move) the best move from this position
+        move (chess.Move) the target move from this position
         winner (int) the winner of the game. -1 means black won,
             0 means draw, 1 means white won.
+
+    Returns:
+        positionPlanes (numpy.array shape=(16,8,8) dtype=float32) the encoded position
+        moveIdx (int) index of the encoded target move
+        winner (float) the winner of the game 
     """
 
     #Flip everything if black's turn
     if not board.turn:
         board = board.mirror()
         winner *= -1
-        bestMove = mirrorMove( bestMove )
+        move = mirrorMove( move )
 
     positionPlanes = encodePosition( board )
 
-    planeIdx, rankIdx, fileIdx = moveToIdx( bestMove )
+    planeIdx, rankIdx, fileIdx = moveToIdx( move )
 
-    bestMoveIdx = planeIdx * 64 + rankIdx * 8 + fileIdx
+    moveIdx = planeIdx * 64 + rankIdx * 8 + fileIdx
 
-    return positionPlanes, bestMoveIdx, float( winner )
+    return positionPlanes, moveIdx, float( winner )
 

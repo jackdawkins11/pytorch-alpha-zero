@@ -9,8 +9,12 @@ import encoder
 def tolist( mainline_moves ):
     """
     Change an iterable object of moves to a list of moves.
+    
     Args:
         mainline_moves (Mainline object) iterable list of moves
+
+    Returns:
+        moves (list of chess.Move) list version of the input moves
     """
     moves = []
     for move in mainline_moves:
@@ -21,8 +25,12 @@ def parseResult( result ):
     """
     Map the result string to an int in {-1, 0, 1}
     for black won, draw, and white won respectively.
+    
     Args:
         result (string) string representation of the winner of a game
+    
+    Returns:
+        (int) integer representing the winner
     """
     if result == "1-0":
         return 1
@@ -60,10 +68,17 @@ class CCRLDataset( Dataset ):
     def __getitem__( self, idx ):
         """
         Load the game in idx.pgn
-        Get a random position, the move made from it and the winner
+        Get a random position, the move made from it, and the winner
         Encode these as numpy arrays
+        
         Args:
             idx (int) the index into the dataset.
+        
+        Returns:
+           position (torch.Tensor (16, 8, 8) float32) the encoded position
+           policy (torch.Tensor (1) long) the target move's index
+           value (torch.Tensor (1) float) the encoded winner of the game
+           mask (torch.Tensor (72, 8, 8) int) the legal move mask
         """
         pgn_file_name = self.pgn_file_names[ idx ]
         pgn_file_name = os.path.join( self.ccrl_dir, pgn_file_name )
