@@ -250,3 +250,52 @@ def encodeTrainingPoint( board, move, winner ):
 
     return positionPlanes, moveIdx, float( winner ), mask
 
+def encodePositionForInference( board ):
+    """
+    Encodes a position as a vector.
+    
+    Args:
+        board (chess.Board) the chess position.
+
+    Returns:
+        positionPlanes (numpy.array shape=(16,8,8) dtype=float32) the encoded position
+        mask (numpy.array (72, 8, 8) int32) the legal move mask
+    """
+
+    #Flip if black's turn
+    if not board.turn:
+        board = board.mirror()
+
+    positionPlanes = encodePosition( board )
+
+    mask = getLegalMoveMask( board )
+
+    return positionPlanes, mask
+
+def decodeOutput( whitesTurn, move_list, value, policy, move_probabilities ):
+    """
+    Decode the output from the neural network.
+
+    Args:
+        whitesTurn (bool) whether its whites turn
+        move_list (list of chess.Move) the legal moves
+        value (numpy.array) the value output
+        policy (numpy.array) the policy output
+        move_probabilities (numpy.array) used to return the decoded probability distribution
+
+    Returns:
+        value (float) the decoded value output
+    """
+
+    for idx, move in enumerate( move_list ):
+        if not whitesTurn:
+            move = mirrorMove( move )
+        planeIdx, rankIdx, fileIdx = moveToIdx( move )
+        moveIdx = planeIdx * 64 + rankIdx * 8 + fileIdx
+        move_probabilities[ idx ] = policy[ moveIdx ]
+
+    if not whitesTurn:
+        value *= -1
+
+    return value
+

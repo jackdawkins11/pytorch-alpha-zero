@@ -170,7 +170,7 @@ class AlphaZeroNet( nn.Module ):
             x (torch.Tensor) the input tensor.
             valueTarget (torch.Tensor) the value target.
             policyTarget (torch.Tensor) the policy target.
-            policyMask (torch.Tensor) the mask for the legal moves.
+            policyMask (torch.Tensor) the legal move mask
         """
 
         x = self.convBlock1( x )
@@ -196,9 +196,15 @@ class AlphaZeroNet( nn.Module ):
 
             policyMask = policyMask.view( policyMask.shape[0], -1 )
 
-            policy = torch.where( torch.eq( policyMask, 1 ), policy, torch.zeros( policy.shape ).cuda() )
+            policy_max = torch.max( policy, dim=1, keepdim=True)[0]
 
-            policy = self.softmax1( policy )
+            policy_exp = torch.exp( policy - policy_max )
 
-            return value, policy
+            policy_exp *= policyMask.type( torch.float32 )
+
+            policy_exp_sum = torch.sum( policy_exp, dim=1, keepdim=True )
+            
+            policy_softmax = policy_exp / policy_exp_sum
+
+            return value, policy_softmax
 

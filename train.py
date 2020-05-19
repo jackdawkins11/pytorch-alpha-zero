@@ -8,8 +8,8 @@ from CCRLDataset import CCRLDataset
 from AlphaZeroNetwork import AlphaZeroNet
 
 num_epochs = 100
-num_blocks = 20
-num_filters = 256
+num_blocks = 5
+num_filters = 64
 
 def train():
 
@@ -23,7 +23,7 @@ def train():
 
     test_ds = CCRLDataset( ccrl_test_dir )
 
-    train_batch_size = 64
+    train_batch_size = 1024
 
     test_batch_size = 4096
 
@@ -126,9 +126,9 @@ def train():
 
         networkFileName = 'AlphaZeroNet_{}x{}_{}.pt'.format( num_blocks, num_filters, epoch ) 
 
-        torch.save( alphaZeroNet, networkFileName )
+        torch.save( alphaZeroNet.state_dict(), networkFileName )
 
-        print( 'Saved network to {}'.format( networkFileName ) )
+        print( 'Saved model to {}'.format( networkFileName ) )
 
 if __name__ == '__main__':
 
