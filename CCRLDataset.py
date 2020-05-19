@@ -84,6 +84,6 @@ class CCRLDataset( Dataset ):
         position, policy, value = encoder.encodeTrainingPoint( board, next_move, winner )
 
         return { 'position': torch.from_numpy( position ),
-                 'policy': torch.from_numpy( policy ),
+                 'policy': torch.Tensor( [policy] ).type( dtype=torch.long ),
                  'value': torch.Tensor( [value] ) }
 

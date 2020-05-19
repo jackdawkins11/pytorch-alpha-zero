@@ -21,12 +21,7 @@ def train():
 
     train_loader = DataLoader( train_ds, batch_size=64, shuffle=True, num_workers=32 )
 
-    alphaZeroNet = AlphaZeroNet( 20, 256 )
-
-    alphaZeroNet = alphaZeroNet.cuda()
-
-    for block in alphaZeroNet.residualBlocks:
-        block = block.cuda()
+    alphaZeroNet = AlphaZeroNet( 20, 256 ).cuda()
 
     optimizer = optim.Adam( alphaZeroNet.parameters() )
 

@@ -150,7 +150,9 @@ class AlphaZeroNet( nn.Module ):
         #The number of input planes is fixed at 16
         self.convBlock1 = ConvBlock( 16, num_filters )
 
-        self.residualBlocks = [ ResidualBlock( num_filters ) for i in range( num_blocks ) ]
+        residualBlocks = [ ResidualBlock( num_filters ) for i in range( num_blocks ) ]
+
+        self.residualBlocks = nn.ModuleList( residualBlocks )
 
         self.valueHead = ValueHead( num_filters )
 

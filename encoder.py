@@ -221,7 +221,5 @@ def encodeTrainingPoint( board, bestMove, winner ):
 
     bestMoveIdx = planeIdx * 64 + rankIdx * 8 + fileIdx
 
-    bestMoveIdx = np.array( [bestMoveIdx] )
-
     return positionPlanes, bestMoveIdx, float( winner )
 
