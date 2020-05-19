@@ -182,8 +182,6 @@ class AlphaZeroNet( nn.Module ):
 
         policy = self.policyHead( x )
 
-        policy = policy.view( policy.shape[0], -1 )
-
         if self.training:
             
             valueLoss = self.mseLoss( value, valueTarget )

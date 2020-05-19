@@ -100,11 +100,13 @@ def train():
 
                 policyTarget = policyTarget.view( policyTarget.shape[0] )
 
+                policy = torch.clamp( policy, min=1e-5 )
+
                 policyLoss = torch.log( policy[ torch.arange( policyTarget.shape[0] ), policyTarget ] ).mean()
             
                 test_policy_loss += policyLoss / num_test_batch
 
-                correct_predictions = torch.eq( torch.argmax( policy ), policyTarget )
+                correct_predictions = torch.eq( torch.argmax( policy, dim=1 ), policyTarget )
 
                 total_correct_predictions += float( correct_predictions.sum() )
 
