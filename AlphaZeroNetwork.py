@@ -158,7 +158,7 @@ class AlphaZeroNet( nn.Module ):
 
         self.policyHead = PolicyHead( num_filters )
 
-        self.softmax1 = nn.Softmax()
+        self.softmax1 = nn.Softmax( dim=1 )
 
         self.mseLoss = nn.MSELoss()
         
@@ -182,6 +182,8 @@ class AlphaZeroNet( nn.Module ):
 
         policy = self.policyHead( x )
 
+        policy = policy.view( policy.shape[0], -1 )
+
         if self.training:
             
             valueLoss = self.mseLoss( value, valueTarget )
@@ -194,7 +196,9 @@ class AlphaZeroNet( nn.Module ):
 
         else:
 
-            policy = torch.where( torch.eq( policyMask, 1 ), policy, 0. )
+            policyMask = policyMask.view( policyMask.shape[0], -1 )
+
+            policy = torch.where( torch.eq( policyMask, 1 ), policy, torch.zeros( policy.shape ).cuda() )
 
             policy = self.softmax1( policy )
 
