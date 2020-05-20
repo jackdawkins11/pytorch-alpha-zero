@@ -38,9 +38,11 @@ def main():
 
         root = MCTS.Node( board, alphaZeroNet )
 
-        for i in range( 100 ):
+        for i in range( 500 ):
             root.rollout( board.copy(), alphaZeroNet )
-       
+      
+        print( root.getStatisticsString() )
+
         edge = root.maxNSelect()
 
         board.push( edge.getMove() )
