@@ -1,6 +1,7 @@
 
 import chess
 import numpy as np
+import torch
 
 def encodePosition( board ):
     """
@@ -272,30 +273,56 @@ def encodePositionForInference( board ):
 
     return positionPlanes, mask
 
-def decodeOutput( whitesTurn, move_list, value, policy, move_probabilities ):
+def decodePolicyOutput( board, policy ):
     """
-    Decode the output from the neural network.
+    Decode the policy output from the neural network.
 
     Args:
-        whitesTurn (bool) whether its whites turn
-        move_list (list of chess.Move) the legal moves
-        value (numpy.array) the value output
+        board (chess.Board) the board
         policy (numpy.array) the policy output
-        move_probabilities (numpy.array) used to return the decoded probability distribution
 
-    Returns:
-        value (float) the decoded value output
     """
 
-    for idx, move in enumerate( move_list ):
-        if not whitesTurn:
+    move_probabilities = np.zeros( 200, dtype=np.float32 )
+
+    num_moves = 0
+
+    for idx, move in enumerate( board.legal_moves ):
+        if not board.turn:
             move = mirrorMove( move )
         planeIdx, rankIdx, fileIdx = moveToIdx( move )
         moveIdx = planeIdx * 64 + rankIdx * 8 + fileIdx
         move_probabilities[ idx ] = policy[ moveIdx ]
+        num_moves += 1
 
-    if not whitesTurn:
-        value *= -1
+    return move_probabilities[ :num_moves ]
 
-    return value
+def callNeuralNetwork( board, neuralNetwork ):
+    """
+    Call the neural network on the given position,
+    get the outputs.
 
+    Args:
+        board (chess.Board) the chess board
+        neuralNetwork (torch.nn.Module) the neural network
+
+    Returns:
+        value (float) the value of this position
+        move_probabilities (numpy.array (num_moves) float) the move probabilities
+    """
+
+    position, mask = encodePositionForInference( board )
+
+    position = torch.from_numpy( position )[ None, ... ].cuda()
+        
+    mask = torch.from_numpy( mask )[ None, ... ].cuda()
+
+    value, policy = neuralNetwork( position, policyMask=mask )
+
+    value = value.cpu().numpy()[ 0 ]
+
+    policy = policy.cpu().numpy()[ 0 ]
+
+    move_probabilities = decodePolicyOutput( board, policy )
+
+    return value, move_probabilities

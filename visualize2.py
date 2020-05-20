@@ -1,13 +1,13 @@
 
 import argparse
 import chess
+import MCTS
 import torch
-import encoder
-import numpy as np
 import AlphaZeroNetwork
 
 def main():
 
+    #prepare neural network
     parser = argparse.ArgumentParser(description='View a self play game using the network.')
     parser.add_argument( '--model', help='Path to model (.pt) file.' )
     parser = parser.parse_args()
@@ -23,6 +23,7 @@ def main():
 
     alphaZeroNet.eval()
 
+    #self play
     board = chess.Board()
 
     while True:
@@ -32,18 +33,17 @@ def main():
             board.reset_board()
             c = input( 'Enter any key to continue ' )
 
-        value, move_probabilities = encoder.callNeuralNetwork( board, alphaZeroNet )
-
         print( 'Whites turn: {}'.format( board.turn ) )
-        print( 'Win probability: {}'.format( value ) )
         print( board )
 
-        choice = np.argmax( move_probabilities )
+        root = MCTS.Node( board, alphaZeroNet )
 
-        for idx, move in enumerate( board.legal_moves ):
-            if idx == choice:
-                board.push( move )
-                break
+        for i in range( 10 ):
+            root.rollout( board.copy(), alphaZeroNet )
+       
+        edge = root.maxNSelect()
+
+        board.push( edge.getMove() )
 
         c = input( 'Enter any key to continue' )
 

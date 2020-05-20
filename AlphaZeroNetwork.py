@@ -196,9 +196,7 @@ class AlphaZeroNet( nn.Module ):
 
             policyMask = policyMask.view( policyMask.shape[0], -1 )
 
-            policy_max = torch.max( policy, dim=1, keepdim=True)[0]
-
-            policy_exp = torch.exp( policy - policy_max )
+            policy_exp = torch.exp( policy )
 
             policy_exp *= policyMask.type( torch.float32 )
 
