@@ -318,8 +318,8 @@ def callNeuralNetwork( board, neuralNetwork ):
     mask = torch.from_numpy( mask )[ None, ... ].cuda()
 
     value, policy = neuralNetwork( position, policyMask=mask )
-
-    value = value.cpu().numpy()[ 0 ]
+    
+    value = value.cpu().numpy()[ 0, 0 ]
 
     policy = policy.cpu().numpy()[ 0 ]
 

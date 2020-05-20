@@ -1,6 +1,20 @@
 
 import encoder
-import numpy as np
+import math
+
+def calcUCT( edge, N_p ):
+
+    Q = edge.getQ()
+
+    N_c = edge.getN()
+
+    P = edge.getP()
+
+    C = 1.5
+
+    UCT = Q + P * C * math.sqrt( N_p ) / ( 1 + N_c )
+
+    return UCT
 
 class Node:
 
@@ -28,18 +42,10 @@ class Node:
 
         for edge in self.edges:
 
-            Q = edge.getQ()
+            uct = calcUCT( edge, self.N )
 
-            N_c = edge.getN()
-
-            P = edge.getP()
-
-            C = 1.5
-
-            val = Q + P * C * np.sqrt( self.N ) / ( 1 + N_c )
-
-            if max_uct < val:
-                max_uct = val
+            if max_uct < uct:
+                max_uct = uct
                 max_edge = edge
 
         return max_edge
@@ -95,6 +101,34 @@ class Node:
                 max_edge = edge
 
         return max_edge
+
+    def getStatisticsString( self ):
+
+        string = '|{: ^10}|{: ^10}|{: ^10}|{: ^10}|{: ^10}|\n'.format(
+                'move', 'P', 'N', 'Q', 'UCT' )
+
+        edges = seld.edges.copy()
+
+        edges.sort( key=lambda edge: calcUCT( edge, self.N ) )
+
+        edges.reverse()
+
+        for edge in edges:
+
+            move = edge.getMove()
+
+            P = edge.getP()
+
+            N = edge.getN()
+
+            Q = edge.getQ()
+
+            UCT = calcUCT( edge, self.N )
+
+            string += '|{: ^10}|{:10.4f}|{:10.4f}|{:10.4f}|{:10.4f}|\n'.format(
+                str( move ), P, N, Q, UCT )
+
+        return string
 
 class Edge:
 
