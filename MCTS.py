@@ -82,80 +82,17 @@ class Node:
     def clearVirtualLoss( self ):
 
         self.virtualLosses = 0.
-
-    def rollout( self, board, neuralNetwork ):
-        """
-        Each rollout traverses the tree until
-        it reaches an un-expanded edge, or no
-        edge in the case we visit a terminal node.
-        This edge is then expanded and its
-        win estimate is propagated to all the
-        nodes between the root and the edge.
-        If the edge does not exist, we use the
-        terminal nodes win status.
-
-        Args:
-            board (chess.Board) the chess position
-            neuralNetwork (torch.nn.Module) the neural network
-        """
-
-        orig_turn = board.turn
-
-        rollout_path = [ self ]
-
-        edge = self.UCTSelect()
-
-        board.push( edge.getMove() )
-
-        while edge.has_child():
-
-            node = edge.getChild()
-
-            rollout_path.append( node )
-
-            edge = node.UCTSelect()
-
-            if edge != None:
-
-                board.push( edge.getMove() )
-
-            else:
-
-                break
-
-        if edge != None:
-            value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
-
-            if orig_turn != board.turn:
-                value *= -1
-
-            new_Q = value / 2. + 0.5
-
-            edge.expand( board, new_Q, move_probabilities )
-
-        else:
-            winner = encoder.parseResult( board.result() )
-
-            if not orig_turn:
-                winner *= -1
-
-            new_Q = float( winner ) / 2. + 0.5
-
-        for node in rollout_path:
-
-            node.N += 1
-
-            node.sum_Q += new_Q
-
+    
     def selectTask( self, board, rollout_path, final_edge ):
         """
         Do the selection stage of MCTS.
 
         Args/Returns:
             board (chess.Board) the root position on input,
-                the position of the last node on return
+                the position of the last node on return.
             rollout_path (list of Node) ordered list of nodes traversed
             final_edge (list of Edge) used to return the final edge selected
+                if this edge is None, the last node is terminal
         """
 
         rollout_path.append( self )
@@ -184,6 +121,63 @@ class Node:
 
         final_edge.append( edge )
 
+    def rollout( self, board, neuralNetwork ):
+        """
+        Each rollout traverses the tree until
+        it reaches an un-expanded edge, or no
+        edge in the case we visit a terminal node.
+        This edge is then expanded and its
+        win estimate is propagated to all the
+        nodes between the root and the edge.
+        If the edge does not exist, we use the
+        terminal nodes win status.
+
+        Args:
+            board (chess.Board) the chess position
+            neuralNetwork (torch.nn.Module) the neural network
+        """
+        
+        rollout_path = []
+        final_edge = []
+
+        self.selectTask( board, rollout_path, final_edge )
+
+        edge = final_edge[ 0 ]
+
+        if edge != None:
+            value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
+
+            new_Q = value / 2. + 0.5
+
+            edge.expand( board, new_Q, move_probabilities )
+
+            turn_modulo = 1
+
+        else:
+            winner = encoder.parseResult( board.result() )
+
+            if not board.turn:
+                winner *= -1
+
+            new_Q = float( winner ) / 2. + 0.5
+            
+            turn_modulo = 0
+            
+        rollout_path.reverse()
+
+        for idx, node in enumerate( rollout_path ):
+
+            node.N += 1
+
+            if idx % 2 == turn_modulo:
+
+                node.sum_Q += new_Q
+
+            else:
+                
+                node.sum_Q += 1. - new_Q
+
+
     def parallelRollouts( self, board, neuralNetwork ):
         """
         Same as rollout, except done in parallel.
@@ -192,8 +186,6 @@ class Node:
             board (chess.Board) the chess position
             neuralNetwork (torch.nn.Module) the neural network
         """
-
-        orig_turn = board.turn
 
         boards = []
         rollout_paths = []
@@ -219,24 +211,37 @@ class Node:
             value = values[ i ]
             board = boards[ i ]
             if edge != None:
-                if board.turn != orig_turn:
-                    value *= -1
+                
                 new_Q = value / 2. + 0.5
+                
                 edge.expand( board, new_Q,
                         move_probabilities[ i ] )
+                
+                
+                turn_modulo = 1
             else:
                 winner = encoder.parseResult( board.result() )
 
-                if not orig_turn:
+                if not board.turn:
                     winner *= -1
 
                 new_Q = float( winner ) / 2. + 0.5
+
+                turn_modulo = 0
+
+            rollout_paths[ i ].reverse()
             
-            for node in rollout_paths[ i ]:
+            for idx, node in enumerate( rollout_paths[ i ] ):
                 
                 node.N += 1.
 
-                node.sum_Q += new_Q
+                if idx % 2 == turn_modulo:
+
+                    node.sum_Q += new_Q
+
+                else:
+                    
+                    node.sum_Q += 1. - new_Q
 
                 node.clearVirtualLoss()
     
@@ -333,7 +338,7 @@ class Edge:
         """
 
         if self.has_child():
-            return self.child.sum_Q / (self.child.N + self.child.virtualLosses)
+            return 1. - ( self.child.sum_Q / (self.child.N + self.child.virtualLosses) )
         else:
             return 0.
 

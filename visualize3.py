@@ -5,6 +5,13 @@ import MCTS
 import torch
 import AlphaZeroNetwork
 
+def tolist( mainline_moves ):
+    moves = []
+    for move in mainline_moves:
+        moves.append( move )
+    return moves
+
+
 def main():
 
     #prepare neural network
@@ -36,22 +43,30 @@ def main():
         print( 'Whites turn: {}'.format( board.turn ) )
         print( board )
 
-        root = MCTS.createRoot( board, alphaZeroNet )
 
-        if not board.turn:
-            for i in range( 3000 ):
-                root.rollout( board.copy(), alphaZeroNet )
+        if board.turn:
+            move_list = tolist( board.legal_moves )
+
+            for idx, move in enumerate( move_list ):
+                print( '{} {}'.format( idx, move ) )
+            
+            idx = int( input( 'Choose a move ' ) )
+            
+            board.push( move_list[ idx ] )
+
         else:
+        
+            root = MCTS.createRoot( board, alphaZeroNet )
+            
             for i in range( 100 ):
                 root.parallelRollouts( board.copy(), alphaZeroNet )
         
-        print( root.getStatisticsString() )
+            print( root.getStatisticsString() )
      
-        edge = root.maxNSelect()
+            edge = root.maxNSelect()
+        
+            board.push( edge.getMove() )
 
-        board.push( edge.getMove() )
-
-        c = input( 'Enter any key to continue' )
 
 if __name__=='__main__':
     main()
