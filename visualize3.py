@@ -38,11 +38,15 @@ def main():
 
         root = MCTS.createRoot( board, alphaZeroNet )
 
-        for i in range( 300 ):
-            root.rollout( board.copy(), alphaZeroNet )
+        if not board.turn:
+            for i in range( 3000 ):
+                root.rollout( board.copy(), alphaZeroNet )
+        else:
+            for i in range( 100 ):
+                root.parallelRollouts( board.copy(), alphaZeroNet )
         
         print( root.getStatisticsString() )
-      
+     
         edge = root.maxNSelect()
 
         board.push( edge.getMove() )

@@ -21,27 +21,6 @@ def tolist( mainline_moves ):
         moves.append( move )
     return moves
 
-def parseResult( result ):
-    """
-    Map the result string to an int in {-1, 0, 1}
-    for black won, draw, and white won respectively.
-    
-    Args:
-        result (string) string representation of the winner of a game
-    
-    Returns:
-        (int) integer representing the winner
-    """
-    if result == "1-0":
-        return 1
-    elif result == "1/2-1/2":
-        return 0
-    elif result == "0-1":
-        return -1
-    else:
-        print( "Unexpected result string {}. Exiting".format( result ) )
-        exit()
-
 class CCRLDataset( Dataset ):
     """
     Subclass of torch.utils.data.Dataset for the ccrl dataset.
@@ -94,7 +73,7 @@ class CCRLDataset( Dataset ):
                 next_move = moves[ idx + 1 ]
                 break
 
-        winner = parseResult( game.headers[ 'Result' ] )
+        winner = encoder.parseResult( game.headers[ 'Result' ] )
 
         position, policy, value, mask = encoder.encodeTrainingPoint( board, next_move, winner )
             

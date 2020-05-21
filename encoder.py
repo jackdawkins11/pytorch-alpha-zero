@@ -3,6 +3,27 @@ import chess
 import numpy as np
 import torch
 
+def parseResult( result ):
+    """
+    Map the result string to an int in {-1, 0, 1}
+    for black won, draw, and white won respectively.
+    
+    Args:
+        result (string) string representation of the winner of a game
+    
+    Returns:
+        (int) integer representing the winner
+    """
+    if result == "1-0":
+        return 1
+    elif result == "1/2-1/2":
+        return 0
+    elif result == "0-1":
+        return -1
+    else:
+        print( "Unexpected result string {}. Exiting".format( result ) )
+        exit()
+
 def encodePosition( board ):
     """
     Encodes a chess position as a vector. The first 12 planes represent
@@ -326,3 +347,47 @@ def callNeuralNetwork( board, neuralNetwork ):
     move_probabilities = decodePolicyOutput( board, policy )
 
     return value, move_probabilities
+
+def callNeuralNetworkBatched( boards, neuralNetwork ):
+    """
+    Run neural network on each board given. Return outputs.
+
+    Args:
+        boards (list of chess.Board) the input positions
+        neuralNetwork (torch.nn.Module) the neural network
+
+    Returns:
+        value (numpy.array (num_inputs) float) the value output for each input position
+        move_probabilities (numpy.array (num_inputs, 200) float) the move probabilities for each position
+    """
+
+    num_inputs = len( boards )
+
+    inputs = torch.zeros( (num_inputs, 16, 8, 8), dtype=torch.float32 )
+    
+    masks = torch.zeros( (num_inputs, 72, 8, 8), dtype=torch.float32 )
+
+    for i in range( num_inputs ):
+    
+        position, mask = encodePositionForInference( boards[ i ] )
+
+        inputs[ i ] = torch.from_numpy( position )
+
+        masks[ i ] = torch.from_numpy( mask )
+
+    value, policy = neuralNetwork( inputs.cuda(), policyMask=masks.cuda() )
+
+    move_probabilities = np.zeros( ( num_inputs, 200 ), dtype=np.float32 )
+
+    value = value.cpu().numpy().reshape( (num_inputs) )
+
+    policy = policy.cpu().numpy()
+
+    for i in range( num_inputs ):
+
+        move_probabilities_tmp = decodePolicyOutput( boards[ i ], policy[ i ] )
+
+        move_probabilities[ i, : move_probabilities_tmp.shape[0] ] = move_probabilities_tmp
+
+    return value, move_probabilities
+

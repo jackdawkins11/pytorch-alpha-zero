@@ -1,6 +1,17 @@
 
 import encoder
 import math
+from threading import Thread
+
+num_parallel_rollouts = 30
+
+def createRoot( board, neuralNetwork ):
+    
+    value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
+
+    Q = value / 2. + 0.5
+
+    return Node( board, Q, move_probabilities )
 
 def calcUCT( edge, N_p ):
     """
@@ -24,20 +35,15 @@ def calcUCT( edge, N_p ):
 
 class Node:
 
-    def __init__( self, board, neuralNetwork, isOpponent=False ):
+    def __init__( self, board, new_Q, move_probabilities ):
         """
         Args:
             board (chess.Board) the chess board
-            neuralNetwork (torch.nn.Module) the neural network
-            isOpponent (bool) whether this node's player is the same as the root's
+            new_Q (float) the probability of winning according to neural network
+            move_probabilities (numpy.array (200) float) probability distribution across move list
         """
 
-        value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
-
-        if isOpponent:
-            value *= -1.
-
-        self.sum_Q = value / 2. + 0.5
+        self.sum_Q = new_Q
         
         self.N = 1.
 
@@ -46,6 +52,8 @@ class Node:
         for idx, move in enumerate( board.legal_moves ):
             edge = Edge( move, move_probabilities[ idx ] )
             self.edges.append( edge )
+
+        self.virtualLosses = 0.
 
     def UCTSelect( self ):
         """
@@ -66,6 +74,14 @@ class Node:
                 max_edge = edge
 
         return max_edge
+
+    def addVirtualLoss( self ):
+
+        self.virtualLosses += 100.
+
+    def clearVirtualLoss( self ):
+
+        self.virtualLosses = 0.
 
     def rollout( self, board, neuralNetwork ):
         """
@@ -108,9 +124,22 @@ class Node:
                 break
 
         if edge != None:
-            new_Q = edge.expand( board, neuralNetwork, orig_turn != board.turn )
+            value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
+
+            if orig_turn != board.turn:
+                value *= -1
+
+            new_Q = value / 2. + 0.5
+
+            edge.expand( board, new_Q, move_probabilities )
+
         else:
-            new_Q = 0.5
+            winner = encoder.parseResult( board.result() )
+
+            if not orig_turn:
+                winner *= -1
+
+            new_Q = float( winner ) / 2. + 0.5
 
         for node in rollout_path:
 
@@ -118,6 +147,99 @@ class Node:
 
             node.sum_Q += new_Q
 
+    def selectTask( self, board, rollout_path, final_edge ):
+        """
+        Do the selection stage of MCTS.
+
+        Args/Returns:
+            board (chess.Board) the root position on input,
+                the position of the last node on return
+            rollout_path (list of Node) ordered list of nodes traversed
+            final_edge (list of Edge) used to return the final edge selected
+        """
+
+        rollout_path.append( self )
+
+        edge = self.UCTSelect()
+
+        board.push( edge.getMove() )
+
+        while edge.has_child():
+
+            node = edge.getChild()
+
+            node.addVirtualLoss()
+
+            rollout_path.append( node )
+
+            edge = node.UCTSelect()
+
+            if edge != None:
+
+                board.push( edge.getMove() )
+
+            else:
+
+                break
+
+        final_edge.append( edge )
+
+    def parallelRollouts( self, board, neuralNetwork ):
+        """
+        Same as rollout, except done in parallel.
+
+        Args:
+            board (chess.Board) the chess position
+            neuralNetwork (torch.nn.Module) the neural network
+        """
+
+        orig_turn = board.turn
+
+        boards = []
+        rollout_paths = []
+        final_edges = []
+        threads = []
+
+        for i in range( num_parallel_rollouts ):
+            boards.append( board.copy() )
+            rollout_paths.append( [] )
+            final_edges.append( [] )
+            threads.append( Thread( target=self.selectTask,
+                    args=( boards[ i ], rollout_paths[ i ], final_edges[ i ] ) ) )
+            threads[ i ].start()
+
+        for i in range( num_parallel_rollouts ):
+            threads[ i ].join()
+
+        values, move_probabilities = encoder.callNeuralNetworkBatched( boards, neuralNetwork )
+
+        for i in range( num_parallel_rollouts ):
+            edge = final_edges[ i ][ 0 ]
+            board = boards[ i ]
+            value = values[ i ]
+            board = boards[ i ]
+            if edge != None:
+                if board.turn != orig_turn:
+                    value *= -1
+                new_Q = value / 2. + 0.5
+                edge.expand( board, new_Q,
+                        move_probabilities[ i ] )
+            else:
+                winner = encoder.parseResult( board.result() )
+
+                if not orig_turn:
+                    winner *= -1
+
+                new_Q = float( winner ) / 2. + 0.5
+            
+            for node in rollout_paths[ i ]:
+                
+                node.N += 1.
+
+                node.sum_Q += new_Q
+
+                node.clearVirtualLoss()
+    
     def maxNSelect( self ):
         """
         Returns:
@@ -211,7 +333,7 @@ class Edge:
         """
 
         if self.has_child():
-            return self.child.sum_Q / self.child.N
+            return self.child.sum_Q / (self.child.N + self.child.virtualLosses)
         else:
             return 0.
 
@@ -223,20 +345,16 @@ class Edge:
 
         return self.P
 
-    def expand( self, board, neuralNetwork, isOpponent ):
+    def expand( self, board, new_Q, move_probabilities ):
         """
         Create the child node with the given board position.
         Args:
             board (chess.Board) the chess position
-            neuralNetwork (torch.nn.Module) the neural network
-            isOpponent (bool) whether the child's player is the same as the root's
-        Returns:
-            (float) the child's Q value
+            new_Q (float) the probability of winning according to the neural network
+            move_probabilities (numpy.array (200) float) the move probabilities according to the neural network
         """
 
-        self.child = Node( board, neuralNetwork, isOpponent )
-
-        return self.child.sum_Q
+        self.child = Node( board, new_Q, move_probabilities )
 
     def getChild( self ):
         """

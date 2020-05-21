@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader
 from CCRLDataset import CCRLDataset
 from AlphaZeroNetwork import AlphaZeroNet
 
-num_epochs = 100
-num_blocks = 5
-num_filters = 64
+num_epochs = 500
+num_blocks = 20
+num_filters = 256
 
 def train():
 
@@ -23,9 +23,9 @@ def train():
 
     test_ds = CCRLDataset( ccrl_test_dir )
 
-    train_batch_size = 1024
+    train_batch_size = 512
 
-    test_batch_size = 4096
+    test_batch_size = 512
 
     train_loader = DataLoader( train_ds, batch_size=train_batch_size, shuffle=True, num_workers=32 )
    
@@ -96,7 +96,7 @@ def train():
 
                 valueLoss = mseLoss( value, valueTarget )
             
-                test_value_loss += valueLoss / num_test_batch
+                test_value_loss += float( valueLoss ) / num_test_batch
 
                 policyTarget = policyTarget.view( policyTarget.shape[0] )
 
@@ -104,7 +104,7 @@ def train():
 
                 policyLoss = torch.log( policy[ torch.arange( policyTarget.shape[0] ), policyTarget ] ).mean()
             
-                test_policy_loss += policyLoss / num_test_batch
+                test_policy_loss += float( policyLoss ) / num_test_batch
 
                 correct_predictions = torch.eq( torch.argmax( policy, dim=1 ), policyTarget )
 
@@ -119,9 +119,9 @@ def train():
 
             print( '' )
 
-        accuracy = total_correct_predictions / ( test_batch_size * num_test_batch )
+        accuracy = 100 * total_correct_predictions / ( test_batch_size * num_test_batch )
 
-        print( 'Evaluation results: value loss {} | policy loss {} | policy accuracy {}%'.format(
+        print( 'Evaluation results: value loss {:0.5f} | policy loss {:0.5f} | policy accuracy {:0.5f}%'.format(
                   test_value_loss, test_policy_loss, accuracy ) )
 
         networkFileName = 'AlphaZeroNet_{}x{}_{}.pt'.format( num_blocks, num_filters, epoch ) 
