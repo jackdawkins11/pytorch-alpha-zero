@@ -28,9 +28,10 @@ def main():
     parser.add_argument( '--model', help='Path to model (.pt) file.' )
     parser.add_argument( '--rollouts', type=int, help='The number of rollouts on computers turn' )
     parser.add_argument( '--verbose', help='Print search statistics', action='store_true' )
+    parser.add_argument( '--selfplay', help='Do self play games', action='store_true' )
     parser.add_argument( '--color', help='Your color w or b' )
     parser.add_argument( '--threads', type=int, help='Number of threads used per rollout' )
-    parser.set_defaults( verbose=False, color='w', rollouts=10 )
+    parser.set_defaults( verbose=False, selfplay=False, color='w', rollouts=10 )
     parser = parser.parse_args()
 
     #prepare neural network
@@ -52,6 +53,7 @@ def main():
     color = parseColor( parser.color )
     verbose = parser.verbose
     num_threads = parser.threads
+    selfplay = parser.selfplay
     
     while True:
 
@@ -66,7 +68,7 @@ def main():
             print( 'Black\'s turn' )
         print( board )
 
-        if board.turn == color:
+        if not selfplay and board.turn == color:
             move_list = tolist( board.legal_moves )
 
             for idx, move in enumerate( move_list ):
@@ -109,8 +111,12 @@ def main():
                 print( 'total rollouts {} duplicate paths {} elapsed {:0.2f} nps {:0.2f}'.format( int( N ), same_paths, elapsed, nps ) )
      
             edge = root.maxNSelect()
+
+            bestmove = edge.getMove()
+
+            print( 'best move {}'.format( str( bestmove ) ) )
         
-            board.push( edge.getMove() )
+            board.push( bestmove )
 
 if __name__=='__main__':
     main()

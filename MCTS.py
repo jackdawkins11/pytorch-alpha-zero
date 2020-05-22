@@ -393,7 +393,7 @@ class Root( Node ):
             threads.append( Thread( target=self.selectTask,
                     args=( boards[ i ], node_paths[ i ], edge_paths[ i ] ) ) )
             threads[ i ].start()
-            time.sleep( 0.000001 )
+            time.sleep( 0.0001 )
 
         for i in range( num_parallel_rollouts ):
             threads[ i ].join()
