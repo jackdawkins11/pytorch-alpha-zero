@@ -5,25 +5,6 @@ from threading import Thread
 from atomic import AtomicLong
 import time
 
-num_parallel_rollouts = 30
-
-def createRoot( board, neuralNetwork ):
-    """
-    Create the root of the search tree.
-
-    Args:
-        board (chess.Board) the chess position
-        neuralNetwork (torch.nn.Module) the neural network
-
-    Returns:
-        (Node) the root of the search tree
-    """
-    
-    value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
-
-    Q = value / 2. + 0.5
-
-    return Node( board, Q, move_probabilities )
 
 def calcUCT( edge, N_p ):
     """
@@ -75,6 +56,14 @@ class Node:
             edge = Edge( move, move_probabilities[ idx ] )
             self.edges.append( edge )
 
+    def getN( self ):
+        """
+        Returns:
+            (float) the number of rollouts performed
+        """
+
+        return self.N
+
     def UCTSelect( self ):
         """
         Get the edge that maximizes the UCT formula, or none
@@ -95,6 +84,190 @@ class Node:
                 max_edge = edge
 
         return max_edge
+    
+    def maxNSelect( self ):
+        """
+        Returns:
+            max_edge (Edge) the edge with maximum N.
+        """
+
+        max_N = -1
+        max_edge = None
+
+        for edge in self.edges:
+
+            N = edge.getN()
+
+            if max_N < N:
+                max_N = N
+                max_edge = edge
+
+        return max_edge
+
+    def getStatisticsString( self ):
+        """
+        Get a string containing the current search statistics.
+        Returns:
+            string (string) a string describing all the moves from this node
+        """
+
+        string = '|{: ^10}|{: ^10}|{: ^10}|{: ^10}|{: ^10}|\n'.format(
+                'move', 'P', 'N', 'Q', 'UCT' )
+
+        edges = self.edges.copy()
+
+        edges.sort( key=lambda edge: edge.getN() )
+
+        edges.reverse()
+
+        for edge in edges:
+
+            move = edge.getMove()
+
+            P = edge.getP()
+
+            N = edge.getN()
+
+            Q = edge.getQ()
+
+            UCT = calcUCT( edge, self.N )
+
+            string += '|{: ^10}|{:10.4f}|{:10.4f}|{:10.4f}|{:10.4f}|\n'.format(
+                str( move ), P, N, Q, UCT )
+
+        return string
+
+class Edge:
+    """
+    An edge in the search tree.
+    Each edge stores a move, a move probability,
+    virtual losses and a child.
+    """
+
+    def __init__( self, move, move_probability ):
+        """
+        Args:
+            move (chess.Move) the move this edge represents
+            move_probability (float) this move's probability from the neural network
+        """
+
+        self.move = move
+
+        self.P = move_probability
+
+        self.child = None
+        
+        self.virtualLosses = AtomicLong( 0 )
+
+    def has_child( self ):
+        """
+        Returns:
+            (bool) whether this edge has a child
+        """
+
+        return self.child != None
+
+    def getN( self ):
+        """
+        Returns:
+            (int) the child's N
+        """
+
+        if self.has_child():
+            return self.child.N + float( self.virtualLosses.value )
+        else:
+            return 0. + float( self.virtualLosses.value )
+
+    def getQ( self ):
+        """
+        Returns:
+            (int) the child's Q
+        """
+
+        if self.has_child():
+            return 1. - ( ( self.child.sum_Q + float( self.virtualLosses.value ) ) / ( self.child.N + float( self.virtualLosses.value ) ) )
+        else:
+            return 1. - ( ( 0.5 + float( self.virtualLosses.value ) ) / ( 1. + float( self.virtualLosses.value ) ) )
+
+    def getP( self ):
+        """
+        Returns:
+            (int) this move's probability (P)
+        """
+
+        return self.P
+
+    def expand( self, board, new_Q, move_probabilities ):
+        """
+        Create the child node with the given board position. Return
+        True if we are expanding an unexpanded node, and otherwise false.
+        Args:
+            board (chess.Board) the chess position
+            new_Q (float) the probability of winning according to the neural network
+            move_probabilities (numpy.array (200) float) the move probabilities according to the neural network
+
+        Returns:
+            (bool) whether we are expanding an unexpanded node
+        """
+
+        if self.child == None:
+
+            self.child = Node( board, new_Q, move_probabilities )
+
+            return True
+
+        else:
+
+            return False
+
+    def getChild( self ):
+        """
+        Returns:
+            (Node) this edge's child node
+        """
+
+        return self.child
+
+    def getMove( self ):
+        """
+        Returns:
+            (chess.Move) this edge's move
+        """
+
+        return self.move
+
+    def addVirtualLoss( self ):
+        """
+        When doing multiple rollouts in parallel,
+        we can discourage threads from taking
+        the same path by adding fake losses
+        to visited nodes.
+        """
+
+        self.virtualLosses += 1
+
+    def clearVirtualLoss( self ):
+
+        self.virtualLosses = AtomicLong( 0 )
+   
+class Root( Node ):
+
+    def __init__( self, board, neuralNetwork ):
+        """
+        Create the root of the search tree.
+
+        Args:
+            board (chess.Board) the chess position
+            neuralNetwork (torch.nn.Module) the neural network
+
+        """
+        value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
+
+        Q = value / 2. + 0.5
+
+        super().__init__( board, Q, move_probabilities )
+
+        self.same_paths = 0
 
     def selectTask( self, board, node_path, edge_path ):
         """
@@ -198,13 +371,14 @@ class Node:
                edge.clearVirtualLoss()
 
 
-    def parallelRollouts( self, board, neuralNetwork ):
+    def parallelRollouts( self, board, neuralNetwork, num_parallel_rollouts ):
         """
         Same as rollout, except done in parallel.
 
         Args:
             board (chess.Board) the chess position
             neuralNetwork (torch.nn.Module) the neural network
+            num_parallel_rollouts (int) the number of rollouts done in parallel
         """
 
         boards = []
@@ -219,7 +393,7 @@ class Node:
             threads.append( Thread( target=self.selectTask,
                     args=( boards[ i ], node_paths[ i ], edge_paths[ i ] ) ) )
             threads[ i ].start()
-            time.sleep( 0.00001 )
+            time.sleep( 0.000001 )
 
         for i in range( num_parallel_rollouts ):
             threads[ i ].join()
@@ -234,8 +408,11 @@ class Node:
                 
                 new_Q = value / 2. + 0.5
                 
-                edge.expand( board, new_Q,
+                isunexpanded = edge.expand( board, new_Q,
                         move_probabilities[ i ] )
+
+                if not isunexpanded:
+                    self.same_paths += 1
 
                 new_Q = 1. - new_Q
                 
@@ -268,157 +445,4 @@ class Node:
                 if edge != None:
                     edge.clearVirtualLoss()
 
-    
-    def maxNSelect( self ):
-        """
-        Returns:
-            max_edge (Edge) the edge with maximum N.
-        """
 
-        max_N = -1
-        max_edge = None
-
-        for edge in self.edges:
-
-            N = edge.getN()
-
-            if max_N < N:
-                max_N = N
-                max_edge = edge
-
-        return max_edge
-
-    def getStatisticsString( self ):
-        """
-        Get a string containing the current search statistics.
-        Returns:
-            string (string) a string describing all the moves from this node
-        """
-
-        string = '|{: ^10}|{: ^10}|{: ^10}|{: ^10}|{: ^10}|\n'.format(
-                'move', 'P', 'N', 'Q', 'UCT' )
-
-        edges = self.edges.copy()
-
-        edges.sort( key=lambda edge: edge.getN() )
-
-        edges.reverse()
-
-        for edge in edges:
-
-            move = edge.getMove()
-
-            P = edge.getP()
-
-            N = edge.getN()
-
-            Q = edge.getQ()
-
-            UCT = calcUCT( edge, self.N )
-
-            string += '|{: ^10}|{:10.4f}|{:10.4f}|{:10.4f}|{:10.4f}|\n'.format(
-                str( move ), P, N, Q, UCT )
-
-        return string
-
-class Edge:
-    """
-    An edge in the search tree.
-    Each edge stores a move, a move probability,
-    virtual losses and a child.
-    """
-
-    def __init__( self, move, move_probability ):
-        """
-        Args:
-            move (chess.Move) the move this edge represents
-            move_probability (float) this move's probability from the neural network
-        """
-
-        self.move = move
-
-        self.P = move_probability
-
-        self.child = None
-        
-        self.virtualLosses = AtomicLong( 0 )
-
-    def has_child( self ):
-        """
-        Returns:
-            (bool) whether this edge has a child
-        """
-
-        return self.child != None
-
-    def getN( self ):
-        """
-        Returns:
-            (int) the child's N
-        """
-
-        if self.has_child():
-            return self.child.N
-        else:
-            return 0.
-
-    def getQ( self ):
-        """
-        Returns:
-            (int) the child's Q
-        """
-
-        if self.has_child():
-            return 1. - ( ( self.child.sum_Q + float( self.virtualLosses.value ) ) / ( self.child.N + float( self.virtualLosses.value ) ) )
-        else:
-            return 1. - ( ( 0.5 + float( self.virtualLosses.value ) ) / ( 1. + float( self.virtualLosses.value ) ) )
-
-    def getP( self ):
-        """
-        Returns:
-            (int) this move's probability (P)
-        """
-
-        return self.P
-
-    def expand( self, board, new_Q, move_probabilities ):
-        """
-        Create the child node with the given board position.
-        Args:
-            board (chess.Board) the chess position
-            new_Q (float) the probability of winning according to the neural network
-            move_probabilities (numpy.array (200) float) the move probabilities according to the neural network
-        """
-
-        self.child = Node( board, new_Q, move_probabilities )
-
-    def getChild( self ):
-        """
-        Returns:
-            (Node) this edge's child node
-        """
-
-        return self.child
-
-    def getMove( self ):
-        """
-        Returns:
-            (chess.Move) this edge's move
-        """
-
-        return self.move
-
-    def addVirtualLoss( self ):
-        """
-        When doing multiple rollouts in parallel,
-        we can discourage threads from taking
-        the same path by adding fake losses
-        to visited nodes.
-        """
-
-        self.virtualLosses += 100
-
-    def clearVirtualLoss( self ):
-
-        self.virtualLosses = AtomicLong( 0 )
-    
