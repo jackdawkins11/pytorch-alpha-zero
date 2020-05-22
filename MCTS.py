@@ -2,6 +2,8 @@
 import encoder
 import math
 from threading import Thread
+from atomic import AtomicLong
+import time
 
 num_parallel_rollouts = 30
 
@@ -53,8 +55,6 @@ class Node:
             edge = Edge( move, move_probabilities[ idx ] )
             self.edges.append( edge )
 
-        self.virtualLosses = 0.
-
     def UCTSelect( self ):
         """
         Get the edge that maximizes the UCT formula.
@@ -75,83 +75,77 @@ class Node:
 
         return max_edge
 
-    def addVirtualLoss( self ):
-
-        self.virtualLosses += 100.
-
-    def clearVirtualLoss( self ):
-
-        self.virtualLosses = 0.
-    
-    def selectTask( self, board, rollout_path, final_edge ):
+    def selectTask( self, board, node_path, edge_path ):
         """
         Do the selection stage of MCTS.
 
         Args/Returns:
             board (chess.Board) the root position on input,
-                the position of the last node on return.
-            rollout_path (list of Node) ordered list of nodes traversed
-            final_edge (list of Edge) used to return the final edge selected
-                if this edge is None, the last node is terminal
+                on return, either the positon of the selected unexpanded node,
+                or a terminal node
+            node_path (list of Node) ordered list of nodes traversed
+            edge_path (list of Edge) ordered list of edges traversed
         """
 
-        rollout_path.append( self )
+        cNode = self
 
-        edge = self.UCTSelect()
+        while True:
 
-        board.push( edge.getMove() )
+            node_path.append( cNode )
 
-        while edge.has_child():
+            cEdge = cNode.UCTSelect()
 
-            node = edge.getChild()
+            edge_path.append( cEdge )
 
-            node.addVirtualLoss()
+            if cEdge == None:
 
-            rollout_path.append( node )
+                #cNode is terminal. Return with board set to the same position as cNode
+                #and edge_path[ -1 ] = None
 
-            edge = node.UCTSelect()
+                break
+            
+            cEdge.addVirtualLoss()
 
-            if edge != None:
+            board.push( cEdge.getMove() )
 
-                board.push( edge.getMove() )
+            if not cEdge.has_child():
 
-            else:
+                #cEdge has not been expanded. Return with board set to the same
+                #position as the unexpanded Node
 
                 break
 
-        final_edge.append( edge )
+            cNode = cEdge.getChild()
 
     def rollout( self, board, neuralNetwork ):
         """
         Each rollout traverses the tree until
-        it reaches an un-expanded edge, or no
-        edge in the case we visit a terminal node.
-        This edge is then expanded and its
-        win estimate is propagated to all the
-        nodes between the root and the edge.
-        If the edge does not exist, we use the
-        terminal nodes win status.
+        it reaches an un-expanded node or a terminal node.
+        Unexpanded nodes are expanded and their
+        win probability propagated.
+        Terminal nodes have their win probability
+        propagated as well.
 
         Args:
             board (chess.Board) the chess position
             neuralNetwork (torch.nn.Module) the neural network
         """
         
-        rollout_path = []
-        final_edge = []
+        node_path = []
+        edge_path = []
 
-        self.selectTask( board, rollout_path, final_edge )
+        self.selectTask( board, node_path, edge_path )
 
-        edge = final_edge[ 0 ]
+        unexpanded_edge = edge_path[ -1 ]
 
         if edge != None:
             value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
 
             new_Q = value / 2. + 0.5
 
-            edge.expand( board, new_Q, move_probabilities )
+            unexpanded_edge.expand( board, new_Q, move_probabilities )
 
-            turn_modulo = 1
+            new_Q = 1. - new_Q
 
         else:
             winner = encoder.parseResult( board.result() )
@@ -160,16 +154,16 @@ class Node:
                 winner *= -1
 
             new_Q = float( winner ) / 2. + 0.5
-            
-            turn_modulo = 0
-            
-        rollout_path.reverse()
 
-        for idx, node in enumerate( rollout_path ):
+        last_node_idx = len( node_path ) - 1
+            
+        for i in range( last_node_idx, -1, -1 ):
+
+            node = node_path[ i ]
 
             node.N += 1
 
-            if idx % 2 == turn_modulo:
+            if ( last_node_idx - i ) % 2 == 0:
 
                 node.sum_Q += new_Q
 
@@ -188,17 +182,18 @@ class Node:
         """
 
         boards = []
-        rollout_paths = []
-        final_edges = []
+        node_paths = []
+        edge_paths = []
         threads = []
 
         for i in range( num_parallel_rollouts ):
             boards.append( board.copy() )
-            rollout_paths.append( [] )
-            final_edges.append( [] )
+            node_paths.append( [] )
+            edge_paths.append( [] )
             threads.append( Thread( target=self.selectTask,
-                    args=( boards[ i ], rollout_paths[ i ], final_edges[ i ] ) ) )
+                    args=( boards[ i ], node_paths[ i ], edge_paths[ i ] ) ) )
             threads[ i ].start()
+            time.sleep( 0.00001 )
 
         for i in range( num_parallel_rollouts ):
             threads[ i ].join()
@@ -206,19 +201,18 @@ class Node:
         values, move_probabilities = encoder.callNeuralNetworkBatched( boards, neuralNetwork )
 
         for i in range( num_parallel_rollouts ):
-            edge = final_edges[ i ][ 0 ]
+            edge = edge_paths[ i ][ -1 ]
             board = boards[ i ]
             value = values[ i ]
-            board = boards[ i ]
             if edge != None:
                 
                 new_Q = value / 2. + 0.5
                 
                 edge.expand( board, new_Q,
                         move_probabilities[ i ] )
+
+                new_Q = 1. - new_Q
                 
-                
-                turn_modulo = 1
             else:
                 winner = encoder.parseResult( board.result() )
 
@@ -227,15 +221,15 @@ class Node:
 
                 new_Q = float( winner ) / 2. + 0.5
 
-                turn_modulo = 0
-
-            rollout_paths[ i ].reverse()
+            last_node_idx = len( node_paths[ i ] ) - 1
             
-            for idx, node in enumerate( rollout_paths[ i ] ):
-                
+            for r in range( last_node_idx, -1, -1 ):
+               
+                node = node_paths[ i ][ r ]
+
                 node.N += 1.
 
-                if idx % 2 == turn_modulo:
+                if ( last_node_idx - r ) % 2 == 0:
 
                     node.sum_Q += new_Q
 
@@ -243,7 +237,11 @@ class Node:
                     
                     node.sum_Q += 1. - new_Q
 
-                node.clearVirtualLoss()
+            for edge in edge_paths[ i ]:
+                
+                if edge != None:
+                    edge.clearVirtualLoss()
+
     
     def maxNSelect( self ):
         """
@@ -311,6 +309,8 @@ class Edge:
         self.P = move_probability
 
         self.child = None
+        
+        self.virtualLosses = AtomicLong( 0 )
 
     def has_child( self ):
         """
@@ -338,9 +338,9 @@ class Edge:
         """
 
         if self.has_child():
-            return 1. - ( self.child.sum_Q / (self.child.N + self.child.virtualLosses) )
+            return 1. - ( ( self.child.sum_Q + float( self.virtualLosses.value ) ) / ( self.child.N + float( self.virtualLosses.value ) ) )
         else:
-            return 0.
+            return 1. - ( ( 0.5 + float( self.virtualLosses.value ) ) / ( 1. + float( self.virtualLosses.value ) ) )
 
     def getP( self ):
         """
@@ -376,3 +376,18 @@ class Edge:
         """
 
         return self.move
+
+    def addVirtualLoss( self ):
+        """
+        When doing multiple rollouts in parallel,
+        we can discourage threads from taking
+        the same path by adding fake losses
+        to visited nodes.
+        """
+
+        self.virtualLosses += 100
+
+    def clearVirtualLoss( self ):
+
+        self.virtualLosses = AtomicLong( 0 )
+    
