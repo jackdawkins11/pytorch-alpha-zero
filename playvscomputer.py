@@ -28,7 +28,7 @@ def main():
     parser.add_argument( '--rollouts', help='The number of rollouts on computers turn' )
     parser.add_argument( '--verbose', help='Print search statistics', action='store_true' )
     parser.add_argument( '--color', help='Your color' )
-    parser.set_defaults( verbose=False, color='w' )
+    parser.set_defaults( verbose=False, color='w', rollouts=10 )
     parser = parser.parse_args()
 
     #prepare neural network

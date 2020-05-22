@@ -8,6 +8,16 @@ import time
 num_parallel_rollouts = 30
 
 def createRoot( board, neuralNetwork ):
+    """
+    Create the root of the search tree.
+
+    Args:
+        board (chess.Board) the chess position
+        neuralNetwork (torch.nn.Module) the neural network
+
+    Returns:
+        (Node) the root of the search tree
+    """
     
     value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
 
@@ -18,9 +28,13 @@ def createRoot( board, neuralNetwork ):
 def calcUCT( edge, N_p ):
     """
     Calculate the UCT formula.
+
     Args:
         edge (Edge) the edge which the UCT formula is for
         N_p (float) the parents visit count
+
+    Returns:
+        (float) the calculated value
     """
 
     Q = edge.getQ()
@@ -36,6 +50,13 @@ def calcUCT( edge, N_p ):
     return UCT
 
 class Node:
+    """
+    A node in the search tree.
+    Nodes store their visit count (N), the sum of the
+    win probabilities in the subtree from the point
+    of view of this node (sum_Q), and a list of
+    edges
+    """
 
     def __init__( self, board, new_Q, move_probabilities ):
         """
@@ -44,10 +65,9 @@ class Node:
             new_Q (float) the probability of winning according to neural network
             move_probabilities (numpy.array (200) float) probability distribution across move list
         """
+        self.N = 1.
 
         self.sum_Q = new_Q
-        
-        self.N = 1.
 
         self.edges = []
 
@@ -57,7 +77,8 @@ class Node:
 
     def UCTSelect( self ):
         """
-        Get the edge that maximizes the UCT formula.
+        Get the edge that maximizes the UCT formula, or none
+        if this node is terminal.
         Returns:
             max_edge (Edge) the edge maximizing the UCT formula.
         """
@@ -82,7 +103,7 @@ class Node:
         Args/Returns:
             board (chess.Board) the root position on input,
                 on return, either the positon of the selected unexpanded node,
-                or a terminal node
+                or the last node visited, if that is terminal
             node_path (list of Node) ordered list of nodes traversed
             edge_path (list of Edge) ordered list of edges traversed
         """
@@ -136,14 +157,14 @@ class Node:
 
         self.selectTask( board, node_path, edge_path )
 
-        unexpanded_edge = edge_path[ -1 ]
+        edge = edge_path[ -1 ]
 
         if edge != None:
             value, move_probabilities = encoder.callNeuralNetwork( board, neuralNetwork )
 
             new_Q = value / 2. + 0.5
 
-            unexpanded_edge.expand( board, new_Q, move_probabilities )
+            edge.expand( board, new_Q, move_probabilities )
 
             new_Q = 1. - new_Q
 
@@ -170,6 +191,11 @@ class Node:
             else:
                 
                 node.sum_Q += 1. - new_Q
+
+        for edge in edge_paths[ i ]:
+                
+            if edge != None:
+               edge.clearVirtualLoss()
 
 
     def parallelRollouts( self, board, neuralNetwork ):
@@ -296,6 +322,11 @@ class Node:
         return string
 
 class Edge:
+    """
+    An edge in the search tree.
+    Each edge stores a move, a move probability,
+    virtual losses and a child.
+    """
 
     def __init__( self, move, move_probability ):
         """
