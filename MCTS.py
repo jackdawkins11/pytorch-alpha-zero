@@ -5,7 +5,6 @@ from threading import Thread
 from atomic import AtomicLong
 import time
 
-
 def calcUCT( edge, N_p ):
     """
     Calculate the UCT formula.
@@ -187,7 +186,7 @@ class Edge:
         if self.has_child():
             return 1. - ( ( self.child.sum_Q + float( self.virtualLosses.value ) ) / ( self.child.N + float( self.virtualLosses.value ) ) )
         else:
-            return 1. - ( ( 0.5 + float( self.virtualLosses.value ) ) / ( 1. + float( self.virtualLosses.value ) ) )
+            return 1. - ( ( 1. + float( self.virtualLosses.value ) ) / ( 1. + float( self.virtualLosses.value ) ) )
 
     def getP( self ):
         """

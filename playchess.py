@@ -54,7 +54,7 @@ def main():
     verbose = parser.verbose
     num_threads = parser.threads
     selfplay = parser.selfplay
-    
+
     while True:
 
         if board.is_game_over():
@@ -88,7 +88,7 @@ def main():
             board.push( move_list[ idx ] )
 
         else:
-        
+
             root = MCTS.Root( board, alphaZeroNet )
             
             starttime = time.perf_counter()
