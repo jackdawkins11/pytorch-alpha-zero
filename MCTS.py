@@ -62,6 +62,14 @@ class Node:
         """
 
         return self.N
+    
+    def getQ( self ):
+        """
+        Returns:
+            (float) the number of rollouts performed
+        """
+
+        return self.sum_Q / self.N
 
     def UCTSelect( self ):
         """
@@ -182,11 +190,10 @@ class Edge:
         Returns:
             (int) the child's Q
         """
-
         if self.has_child():
             return 1. - ( ( self.child.sum_Q + float( self.virtualLosses.value ) ) / ( self.child.N + float( self.virtualLosses.value ) ) )
         else:
-            return 1. - ( ( 1. + float( self.virtualLosses.value ) ) / ( 1. + float( self.virtualLosses.value ) ) )
+            return 0.
 
     def getP( self ):
         """
