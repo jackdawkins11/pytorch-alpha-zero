@@ -23,10 +23,17 @@ def calcUCT( edge, N_p ):
 
     P = edge.getP()
 
+    #This is a quick fix
+    #when getting nans from nn
+    #if math.isnan( P ):
+    #    P = 0.1
+
     C = 1.5
 
     UCT = Q + P * C * math.sqrt( N_p ) / ( 1 + N_c )
 
+    assert not math.isnan( UCT ), 'Q {} N_c {} P {}'.format( Q, N_c, P )
+    
     return UCT
 
 class Node:
@@ -79,7 +86,7 @@ class Node:
             max_edge (Edge) the edge maximizing the UCT formula.
         """
 
-        max_uct = -1.
+        max_uct = -1000.
         max_edge = None
 
         for edge in self.edges:
@@ -89,6 +96,8 @@ class Node:
             if max_uct < uct:
                 max_uct = uct
                 max_edge = edge
+
+        assert not ( max_edge == None and not self.isTerminal() )
 
         return max_edge
     
@@ -144,6 +153,12 @@ class Node:
 
         return string
 
+    def isTerminal( self ):
+        """
+        Checks if this node is terminal.'
+        """
+        return len( self.edges ) == 0
+
 class Edge:
     """
     An edge in the search tree.
@@ -164,7 +179,8 @@ class Edge:
 
         self.child = None
         
-        self.virtualLosses = AtomicLong( 0 )
+        #self.virtualLosses = AtomicLong( 0 )
+        self.virtualLosses = 0.
 
     def has_child( self ):
         """
@@ -181,9 +197,9 @@ class Edge:
         """
 
         if self.has_child():
-            return self.child.N + float( self.virtualLosses.value )
+            return self.child.N + self.virtualLosses
         else:
-            return 0. + float( self.virtualLosses.value )
+            return 0. + self.virtualLosses
 
     def getQ( self ):
         """
@@ -191,7 +207,7 @@ class Edge:
             (int) the child's Q
         """
         if self.has_child():
-            return 1. - ( ( self.child.sum_Q + float( self.virtualLosses.value ) ) / ( self.child.N + float( self.virtualLosses.value ) ) )
+            return 1. - ( ( self.child.sum_Q + self.virtualLosses ) / ( self.child.N + self.virtualLosses ) )
         else:
             return 0.
 
@@ -254,7 +270,8 @@ class Edge:
 
     def clearVirtualLoss( self ):
 
-        self.virtualLosses = AtomicLong( 0 )
+        #self.virtualLosses = AtomicLong( 0 )
+        self.virtualLosses = 0.
    
 class Root( Node ):
 
@@ -301,6 +318,8 @@ class Root( Node ):
 
                 #cNode is terminal. Return with board set to the same position as cNode
                 #and edge_path[ -1 ] = None
+
+                assert cNode.isTerminal()
 
                 break
             

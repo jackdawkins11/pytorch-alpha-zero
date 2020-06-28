@@ -46,19 +46,16 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
         if mode == 'h' and board.turn == color:
             move_list = tolist( board.legal_moves )
 
-            for idx, move in enumerate( move_list ):
-                print( '{} {}'.format( idx, move ) )
-
             idx = -1
 
             while not (0 <= idx and idx < len( move_list ) ):
             
                 string = input( 'Choose a move ' )
 
-                try:
-                    idx = int( string )
-                except:
-                    continue
+                for i, move in enumerate( move_list ):
+                    if str( move ) == string:
+                        idx = i
+                        break
             
             board.push( move_list[ idx ] )
 

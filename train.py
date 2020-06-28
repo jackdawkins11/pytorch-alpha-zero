@@ -10,10 +10,12 @@ from AlphaZeroNetwork import AlphaZeroNet
 num_epochs = 500
 num_blocks = 20
 num_filters = 256
+train_batch_size = 256
+test_batch_size = 1024
+ccrl_root_dir = '/home/jack/Downloads/ccrl-dataset/ccrl-reformated'
+logmode=True
 
 def train():
-
-    ccrl_root_dir = '/home/jack/Downloads/ccrl-dataset/ccrl-reformated'
 
     ccrl_train_dir = os.path.join( ccrl_root_dir, 'train' )
     
@@ -22,11 +24,7 @@ def train():
     train_ds = CCRLDataset( ccrl_train_dir )
 
     test_ds = CCRLDataset( ccrl_test_dir )
-
-    train_batch_size = 512
-
-    test_batch_size = 512
-
+    
     train_loader = DataLoader( train_ds, batch_size=train_batch_size, shuffle=True, num_workers=32 )
    
     test_loader = DataLoader( test_ds, batch_size=test_batch_size, num_workers=32 )
@@ -36,6 +34,9 @@ def train():
     optimizer = optim.Adam( alphaZeroNet.parameters() )
 
     mseLoss = nn.MSELoss()
+
+    if logmode:
+        print( 'Starting training' )
 
     for epoch in range( num_epochs ):
  
@@ -62,13 +63,14 @@ def train():
 
             message = 'Epoch {:03} | Step {:05} / {:05} | Value loss {:0.5f} | Policy loss {:0.5f}'.format(
                      epoch, iter_num, len( train_loader ), float( valueLoss ), float( policyLoss ) )
- 
-            if iter_num != 0:
-                print( ('\b' * len(message) ), end='' )
-                                    
-            print( message, end='', flush=True )
+            
+            if not logmode:
+                if iter_num != 0:
+                    print( ('\b' * len(message) ), end='' )
+                print( message, end='', flush=True )
         
-        print( '' )
+        if not logmode:
+            print( '' )
  
         alphaZeroNet.eval()
 
@@ -111,20 +113,21 @@ def train():
                 total_correct_predictions += float( correct_predictions.sum() )
 
                 message = 'Evaluating {:05} / {:05}'.format( iter_num, num_test_batch )
- 
-                if iter_num != 0:
-                    print( ('\b' * len( message ) ), end='' )
-                               
-                print( message, end='', flush=True )
 
-            print( '' )
+                if not logmode:
+                    if iter_num != 0:
+                        print( ('\b' * len( message ) ), end='' )
+                    print( message, end='', flush=True )
+            
+            if not logmode:
+                print( '' )
 
         accuracy = 100 * total_correct_predictions / ( test_batch_size * num_test_batch )
 
         print( 'Evaluation results: value loss {:0.5f} | policy loss {:0.5f} | policy accuracy {:0.5f}%'.format(
                   test_value_loss, test_policy_loss, accuracy ) )
 
-        networkFileName = 'AlphaZeroNet_{}x{}_{}.pt'.format( num_blocks, num_filters, epoch ) 
+        networkFileName = 'AlphaZeroNet_{}x{}.pt'.format( num_blocks, num_filters ) 
 
         torch.save( alphaZeroNet.state_dict(), networkFileName )
 

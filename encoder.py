@@ -21,8 +21,7 @@ def parseResult( result ):
     elif result == "0-1":
         return -1
     else:
-        print( "Unexpected result string {}. Exiting".format( result ) )
-        exit()
+        raise Exception( "Unexpected result string {}. Exiting".format( result ) )
 
 def encodePosition( board ):
     """
@@ -376,7 +375,7 @@ def callNeuralNetworkBatched( boards, neuralNetwork ):
         masks[ i ] = torch.from_numpy( mask )
 
     value, policy = neuralNetwork( inputs.cuda(), policyMask=masks.cuda() )
-
+ 
     move_probabilities = np.zeros( ( num_inputs, 200 ), dtype=np.float32 )
 
     value = value.cpu().numpy().reshape( (num_inputs) )
