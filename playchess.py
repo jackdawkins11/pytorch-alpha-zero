@@ -60,13 +60,15 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
             board.push( move_list[ idx ] )
 
         else:
-
-            root = MCTS.Root( board, alphaZeroNet )
-            
+                
             starttime = time.perf_counter()
 
-            for i in range( num_rollouts ):
-                root.parallelRollouts( board.copy(), alphaZeroNet, num_threads )
+            with torch.no_grad():
+
+                root = MCTS.Root( board, alphaZeroNet )
+            
+                for i in range( num_rollouts ):
+                    root.parallelRollouts( board.copy(), alphaZeroNet, num_threads )
 
             endtime = time.perf_counter()
 
