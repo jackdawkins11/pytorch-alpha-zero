@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from CCRLDataset import CCRLDataset
 from AlphaZeroNetwork import AlphaZeroNet
 
+#Training params
 num_epochs = 500
 num_blocks = 20
 num_filters = 256
@@ -17,6 +18,7 @@ logmode=True
 
 def train():
 
+    #Prepare two torch.utils.data.DataLoader objects for training and testing respectively
     ccrl_train_dir = os.path.join( ccrl_root_dir, 'train' )
     
     ccrl_test_dir = os.path.join( ccrl_root_dir, 'test' )
@@ -29,6 +31,7 @@ def train():
    
     test_loader = DataLoader( test_ds, batch_size=test_batch_size, num_workers=32 )
 
+    #Prepare an untrained AlphaZeroNet instance
     alphaZeroNet = AlphaZeroNet( num_blocks, num_filters ).cuda()
 
     optimizer = optim.Adam( alphaZeroNet.parameters() )
@@ -43,6 +46,7 @@ def train():
         alphaZeroNet.train()
 
         for iter_num, data in enumerate( train_loader ):
+            #Each iteration of this loop trains the network with one batch of data
 
             optimizer.zero_grad()
 
@@ -71,6 +75,8 @@ def train():
         
         if not logmode:
             print( '' )
+
+        #After doing one pass over all the data we evaluate on test data
  
         alphaZeroNet.eval()
 
