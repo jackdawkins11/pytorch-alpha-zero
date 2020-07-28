@@ -3,6 +3,15 @@ import chess.pgn
 import os
 import numpy as np
 
+"""
+This program reformats the ccrl dataset from how
+it was downloaded into a more useable way. To run,
+just specify the folder the dataset was downloaded
+to using ccrl_root_dir and where the reformated data should
+be saved using new_root_dir. new_root_dir must not exist
+but its parent directory must exist.
+"""
+
 ccrl_root_dir = '/home/jack/Downloads/ccrl-dataset/ccrl'
 
 ccrl_train_dir = os.path.join( ccrl_root_dir, 'train' )
