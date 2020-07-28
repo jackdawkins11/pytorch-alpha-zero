@@ -133,7 +133,9 @@ def parseColor( colorString ):
         exit()
 
 if __name__=='__main__':
-    parser = argparse.ArgumentParser(description='Play versus the computer.')
+    parser = argparse.ArgumentParser(description='Play chess. Either play against the computer or let it play itself.'\
+            +' Good parameters for playing against the computer as white would be \n'\
+            +'"python3 playchess.py --model weights/AlphaZeroNet_20x256.pt --verbose --rollouts 300 --threads 16 --mode h"')
     parser.add_argument( '--model', help='Path to model (.pt) file.' )
     parser.add_argument( '--mode', help='Operation mode: \'s\' self play, \'p\' profile, \'h\' human' )
     parser.add_argument( '--color', help='Your color w or b' )
