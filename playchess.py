@@ -7,12 +7,22 @@ import AlphaZeroNetwork
 import time
 
 def tolist( move_generator ):
+    """
+    Change an iterable object of moves to a list of moves.
+    
+    Args:
+        move_generator (Mainline object) iterable list of moves
+
+    Returns:
+        moves (list of chess.Move) list version of the input moves
+    """
     moves = []
     for move in move_generator:
         moves.append( move )
     return moves
 
 def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
+    
     #prepare neural network
     alphaZeroNet = AlphaZeroNetwork.AlphaZeroNet( 20, 256 )
 
@@ -24,19 +34,23 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
         param.requires_grad = False
 
     alphaZeroNet.eval()
-    
+   
+    #create chess board object
     if fen:
         board = chess.Board( fen )
     else:
         board = chess.Board()
 
+    #play chess moves
     while True:
 
         if board.is_game_over():
+            #If the game is over, output the winner and wait for user input to continue
             print( 'Game over. Winner: {}'.format( board.result() ) )
             board.reset_board()
             c = input( 'Enter any key to continue ' )
 
+        #Print the current state of the board
         if board.turn:
             print( 'White\'s turn' )
         else:
@@ -44,6 +58,7 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
         print( board )
 
         if mode == 'h' and board.turn == color:
+            #If we are in human mode and it is the humans turn, play the move specified from stdin
             move_list = tolist( board.legal_moves )
 
             idx = -1
@@ -60,7 +75,8 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
             board.push( move_list[ idx ] )
 
         else:
-                
+            #In all other cases the AI selects the next move
+            
             starttime = time.perf_counter()
 
             with torch.no_grad():
@@ -83,6 +99,7 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
             same_paths = root.same_paths
        
             if verbose:
+                #In verbose mode, print some statistics
                 print( root.getStatisticsString() )
                 print( 'total rollouts {} Q {:0.3f} duplicate paths {} elapsed {:0.2f} nps {:0.2f}'.format( int( N ), Q, same_paths, elapsed, nps ) )
      
@@ -95,9 +112,17 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
             board.push( bestmove )
 
         if mode == 'p':
+            #In profile mode, exit after the first move
             break
 
 def parseColor( colorString ):
+    """
+    Maps 'w' to True and 'b' to False.
+
+    Args:
+        colorString (string) a string representing white or black
+
+    """
 
     if colorString == 'w' or colorString == 'W':
         return True
