@@ -17,6 +17,7 @@ train_batch_size = 256
 test_batch_size = 1024
 ccrl_root_dir = '/root/cclr-reformated'
 logmode=False
+cuda=False
 
 def train():
 
@@ -34,7 +35,10 @@ def train():
     test_loader = DataLoader( test_ds, batch_size=test_batch_size, num_workers=32 )
 
     #Prepare an untrained AlphaZeroNet instance
-    alphaZeroNet = AlphaZeroNet( num_blocks, num_filters )
+    if cuda:
+        alphaZeroNet = AlphaZeroNet( num_blocks, num_filters ).cuda()
+    else:
+        alphaZeroNet = AlphaZeroNet( num_blocks, num_filters )
 
     optimizer = optim.Adam( alphaZeroNet.parameters() )
 
@@ -47,18 +51,22 @@ def train():
  
         alphaZeroNet.train()
 
-        alphaZeroNet, optimizer = ipex.optimize(alphaZeroNet, optimizer=optimizer)
+        if not cuda:
+            alphaZeroNet, optimizer = ipex.optimize(alphaZeroNet, optimizer=optimizer)
 
         for iter_num, data in enumerate( train_loader ):
             #Each iteration of this loop trains the network with one batch of data
 
             optimizer.zero_grad()
 
-            position = data[ 'position' ]
-
-            valueTarget = data[ 'value' ]
-
-            policyTarget = data[ 'policy' ]
+            if cuda:
+                position = data[ 'position' ].cuda()
+                valueTarget = data[ 'value' ].cuda()
+                policyTarget = data[ 'policy' ].cuda()
+            else:
+                position = data[ 'position' ]
+                valueTarget = data[ 'value' ]
+                policyTarget = data[ 'policy' ]
 
             valueLoss, policyLoss = alphaZeroNet( position, valueTarget=valueTarget,
                                  policyTarget=policyTarget )
@@ -83,8 +91,9 @@ def train():
         #After doing one pass over all the data we evaluate on test data
  
         alphaZeroNet.eval()
-        
-        alphaZeroNet = ipex.optimize(alphaZeroNet)
+       
+        if not cuda:
+            alphaZeroNet = ipex.optimize(alphaZeroNet)
 
         num_test_batch = len( test_loader )
 
@@ -98,13 +107,16 @@ def train():
 
             for iter_num, data in enumerate( test_loader ):
 
-                position = data[ 'position' ]
-
-                valueTarget = data[ 'value' ]
-
-                policyTarget = data[ 'policy' ]
-            
-                policyMask = data[ 'mask' ]
+                if cuda:
+                    position = data[ 'position' ].cuda()
+                    valueTarget = data[ 'value' ].cuda()
+                    policyTarget = data[ 'policy' ].cuda()
+                    policyMask = data[ 'mask' ].cuda()
+                else:
+                    position = data[ 'position' ]
+                    valueTarget = data[ 'value' ]
+                    policyTarget = data[ 'policy' ]
+                    policyMask = data[ 'mask' ]
 
                 value, policy = alphaZeroNet( position, policyMask=policyMask )
 
