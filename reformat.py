@@ -12,7 +12,7 @@ be saved using new_root_dir. new_root_dir must not exist
 but its parent directory must exist.
 """
 
-ccrl_root_dir = '/home/jack/Downloads/ccrl-dataset/ccrl'
+ccrl_root_dir = '/root/cclr'
 
 ccrl_train_dir = os.path.join( ccrl_root_dir, 'train' )
 
@@ -37,7 +37,7 @@ def next_game( dir_name, file_names ):
 
 #create new directory
 
-new_root_dir = '/home/jack/Downloads/ccrl-dataset/ccrl-reformated'
+new_root_dir = '/root/cclr-reformated'
 if os.path.exists( new_root_dir ):
     print( 'Error directory exists' )
     exit()

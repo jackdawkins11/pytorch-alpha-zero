@@ -7,14 +7,16 @@ from torch.utils.data import DataLoader
 from CCRLDataset import CCRLDataset
 from AlphaZeroNetwork import AlphaZeroNet
 
+import intel_extension_for_pytorch as ipex
+
 #Training params
 num_epochs = 500
 num_blocks = 20
 num_filters = 256
 train_batch_size = 256
 test_batch_size = 1024
-ccrl_root_dir = '/home/jack/Downloads/ccrl-dataset/ccrl-reformated'
-logmode=True
+ccrl_root_dir = '/root/ccrl-reformated'
+logmode=False
 
 def train():
 
@@ -32,29 +34,31 @@ def train():
     test_loader = DataLoader( test_ds, batch_size=test_batch_size, num_workers=32 )
 
     #Prepare an untrained AlphaZeroNet instance
-    alphaZeroNet = AlphaZeroNet( num_blocks, num_filters ).cuda()
+    alphaZeroNet = AlphaZeroNet( num_blocks, num_filters )
 
     optimizer = optim.Adam( alphaZeroNet.parameters() )
 
     mseLoss = nn.MSELoss()
 
-    if logmode:
+    if not logmode:
         print( 'Starting training' )
 
     for epoch in range( num_epochs ):
  
         alphaZeroNet.train()
 
+        alphaZeroNet, optimizer = ipex.optimize(alphaZeroNet, optimizer=optimizer)
+
         for iter_num, data in enumerate( train_loader ):
             #Each iteration of this loop trains the network with one batch of data
 
             optimizer.zero_grad()
 
-            position = data[ 'position' ].cuda()
+            position = data[ 'position' ]
 
-            valueTarget = data[ 'value' ].cuda()
+            valueTarget = data[ 'value' ]
 
-            policyTarget = data[ 'policy' ].cuda()
+            policyTarget = data[ 'policy' ]
 
             valueLoss, policyLoss = alphaZeroNet( position, valueTarget=valueTarget,
                                  policyTarget=policyTarget )
@@ -79,6 +83,8 @@ def train():
         #After doing one pass over all the data we evaluate on test data
  
         alphaZeroNet.eval()
+        
+        alphaZeroNet = ipex.optimize(alphaZeroNet)
 
         num_test_batch = len( test_loader )
 
@@ -92,13 +98,13 @@ def train():
 
             for iter_num, data in enumerate( test_loader ):
 
-                position = data[ 'position' ].cuda()
+                position = data[ 'position' ]
 
-                valueTarget = data[ 'value' ].cuda()
+                valueTarget = data[ 'value' ]
 
-                policyTarget = data[ 'policy' ].cuda()
+                policyTarget = data[ 'policy' ]
             
-                policyMask = data[ 'mask' ].cuda()
+                policyMask = data[ 'mask' ]
 
                 value, policy = alphaZeroNet( position, policyMask=policyMask )
 
