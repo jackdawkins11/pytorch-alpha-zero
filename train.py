@@ -15,7 +15,7 @@ num_blocks = 20
 num_filters = 256
 train_batch_size = 256
 test_batch_size = 1024
-ccrl_root_dir = '/root/ccrl-reformated'
+ccrl_root_dir = '/root/cclr-reformated'
 logmode=False
 
 def train():
