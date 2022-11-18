@@ -26,9 +26,17 @@ def main( modelFile, mode, color, num_rollouts, num_threads, fen, verbose ):
     #prepare neural network
     alphaZeroNet = AlphaZeroNetwork.AlphaZeroNet( 20, 256 )
 
-    alphaZeroNet.load_state_dict( torch.load( modelFile ) )
+    #toggle for cpu/gpu
+    cuda = False
+    if cuda:
+        weights = torch.load( modelFile )
+    else:
+        weights = torch.load( modelFile, map_location=torch.device('cpu') )
 
-    alphaZeroNet = alphaZeroNet.cuda()
+    alphaZeroNet.load_state_dict( weights )
+
+    if cuda:
+        alphaZeroNet = alphaZeroNet.cuda()
 
     for param in alphaZeroNet.parameters():
         param.requires_grad = False

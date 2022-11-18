@@ -3,6 +3,8 @@ import chess
 import numpy as np
 import torch
 
+cuda = False
+
 def parseResult( result ):
     """
     Map the result string to an int in {-1, 0, 1}
@@ -333,9 +335,13 @@ def callNeuralNetwork( board, neuralNetwork ):
 
     position, mask = encodePositionForInference( board )
 
-    position = torch.from_numpy( position )[ None, ... ].cuda()
+    position = torch.from_numpy( position )[ None, ... ]
         
-    mask = torch.from_numpy( mask )[ None, ... ].cuda()
+    mask = torch.from_numpy( mask )[ None, ... ]
+
+    if cuda:
+        position = position.cuda()
+        mask = mask.cuda()
 
     value, policy = neuralNetwork( position, policyMask=mask )
     
@@ -374,7 +380,11 @@ def callNeuralNetworkBatched( boards, neuralNetwork ):
 
         masks[ i ] = torch.from_numpy( mask )
 
-    value, policy = neuralNetwork( inputs.cuda(), policyMask=masks.cuda() )
+    if cuda:
+        inputs = inputs.cuda()
+        masks = masks.cuda()
+
+    value, policy = neuralNetwork( inputs, policyMask=masks )
  
     move_probabilities = np.zeros( ( num_inputs, 200 ), dtype=np.float32 )
 
