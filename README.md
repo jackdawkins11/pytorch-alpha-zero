@@ -5,7 +5,7 @@ This is a pytorch implementation of Google Deep Mind's AlphaZero algorithm for c
 
 ## Live
 
-[Play against it here](http://ec2-18-233-98-91.compute-1.amazonaws.com:5000/index.html)
+[Play against it here](http://ec2-54-175-18-115.compute-1.amazonaws.com/index.html)
 
 ## Dependencies
 
