@@ -4,7 +4,12 @@ import chess
 import encoder
 import torch
 import AlphaZeroNetwork
-app = Flask(__name__)
+from flask import send_from_directory
+app = Flask(__name__, static_url_path='')
+
+@app.route('/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
 
 modelFile = "weights/AlphaZeroNet_20x256.pt"
 #toggle for cpu/gpu
