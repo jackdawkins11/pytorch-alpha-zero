@@ -153,4 +153,8 @@ var ChessBoard = function (_React$Component) {
 	return ChessBoard;
 }(React.Component);
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ChessBoard, null));
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
+	"div",
+	{ style: { width: "100%", display: "flex", justifyContent: "center" } },
+	React.createElement(ChessBoard, null)
+));

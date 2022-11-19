@@ -129,4 +129,7 @@ class ChessBoard extends React.Component {
 	}
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<ChessBoard />);
+ReactDOM.createRoot(document.getElementById('root')).render(
+	<div style={{width: "100%", display: "flex", justifyContent: "center"}}>
+		<ChessBoard /> 
+	</div>);
