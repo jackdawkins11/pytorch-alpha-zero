@@ -19,6 +19,11 @@ var ChessBoard = function (_React$Component) {
 	}
 
 	_createClass(ChessBoard, [{
+		key: "castleCheck",
+		value: function castleCheck(pieces, fromRank, fromFile, toRank, toFile) {
+			return (pieces[fromRank][fromFile] == 'k' || pieces[fromRank][fromFile] == 'K') && (toFile - fromFile) % 2 == 0;
+		}
+	}, {
 		key: "getMoveFromAPI",
 		value: function getMoveFromAPI(pieces, turn) {
 			var _this2 = this;
@@ -39,13 +44,40 @@ var ChessBoard = function (_React$Component) {
 			}).then(function (r) {
 				return r.text();
 			}).then(function (r) {
-				var file1 = r.charCodeAt(0) - 'a'.charCodeAt(0);
-				var rank1 = r.charCodeAt(1) - '1'.charCodeAt(0);
-				var file2 = r.charCodeAt(2) - 'a'.charCodeAt(0);
-				var rank2 = r.charCodeAt(3) - '1'.charCodeAt(0);
 
-				pieces[rank2][file2] = pieces[rank1][file1];
-				pieces[rank1][file1] = "1";
+				//castles
+				if (r == "e1g1" && pieces[0][4] == 'K') {
+					pieces[0][4] = '1';
+					pieces[0][5] = 'R';
+					pieces[0][6] = 'K';
+					pieces[0][7] = '1';
+				} else if (r == "e1c1" && pieces[0][4] == 'K') {
+					pieces[0][0] = '1';
+					pieces[0][1] = 'K';
+					pieces[0][2] = 'R';
+					pieces[0][3] = '1';
+					pieces[0][4] = '1';
+				} else if (r == "e8g8" && pieces[7][4] == 'k') {
+					pieces[7][4] = '1';
+					pieces[7][5] = 'r';
+					pieces[7][6] = 'k';
+					pieces[7][7] = '1';
+				} else if (r == "e1g1" && pieces[0][4] == 'k') {
+					pieces[7][0] = '1';
+					pieces[7][1] = 'k';
+					pieces[7][2] = 'r';
+					pieces[7][3] = '1';
+					pieces[7][4] = '1';
+				} else {
+					///normal
+					var file1 = r.charCodeAt(0) - 'a'.charCodeAt(0);
+					var rank1 = r.charCodeAt(1) - '1'.charCodeAt(0);
+					var file2 = r.charCodeAt(2) - 'a'.charCodeAt(0);
+					var rank2 = r.charCodeAt(3) - '1'.charCodeAt(0);
+					pieces[rank2][file2] = pieces[rank1][file1];
+					pieces[rank1][file1] = "1";
+				}
+
 				var newTurn = turn == "w" ? "b" : "w";
 				_this2.setState({ selected: null, pieces: pieces, turn: newTurn });
 			});
@@ -73,8 +105,35 @@ var ChessBoard = function (_React$Component) {
 										if (sIdx == null || pieces[sIdx[1]][sIdx[0]] == "1") {
 											_this3.setState({ selected: [colIdx, 7 - rowIdx] });
 										} else {
-											pieces[7 - rowIdx][colIdx] = pieces[sIdx[1]][sIdx[0]];
-											pieces[sIdx[1]][sIdx[0]] = "1";
+
+											//castles
+											if (sIdx[1] == 0 && sIdx[0] == 4 && colIdx == 6 && pieces[0][4] == 'K') {
+												pieces[0][4] = '1';
+												pieces[0][5] = 'R';
+												pieces[0][6] = 'K';
+												pieces[0][7] = '1';
+											} else if (sIdx[1] == 0 && sIdx[0] == 4 && colIdx == 2 && pieces[0][4] == 'K') {
+												pieces[0][0] = '1';
+												pieces[0][1] = 'K';
+												pieces[0][2] = 'R';
+												pieces[0][3] = '1';
+												pieces[0][4] = '1';
+											} else if (sIdx[1] == 7 && sIdx[0] == 4 && colIdx == 6 && pieces[7][4] == 'k') {
+												pieces[7][4] = '1';
+												pieces[7][5] = 'r';
+												pieces[7][6] = 'k';
+												pieces[7][7] = '1';
+											} else if (sIdx[1] == 7 && sIdx[0] == 4 && colIdx == 2 && pieces[7][4] == 'k') {
+												pieces[7][0] = '1';
+												pieces[7][1] = 'k';
+												pieces[7][2] = 'r';
+												pieces[7][3] = '1';
+												pieces[7][4] = '1';
+											} else {
+												///normal
+												pieces[7 - rowIdx][colIdx] = pieces[sIdx[1]][sIdx[0]];
+												pieces[sIdx[1]][sIdx[0]] = "1";
+											}
 											var newTurn = _this3.state.turn == "w" ? "b" : "w";
 											_this3.setState({ selected: null, pieces: pieces, turn: newTurn });
 											_this3.getMoveFromAPI(pieces, newTurn);
