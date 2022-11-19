@@ -139,8 +139,8 @@ var ChessBoard = function (_React$Component) {
 											_this3.getMoveFromAPI(pieces, newTurn);
 										}
 									},
-									style: { outline: "none", border: "none", width: "50px", height: "50px", background: (rowIdx + colIdx) % 2 == 0 ? "gainsboro" : "darkGrey" } },
-								piece != "1" && React.createElement("img", { style: { width: "25px", height: "25px" }, src: "/pngs/" + piece + ".png", alt: "" })
+									style: { outline: "none", border: "none", width: "100px", height: "100px", background: (rowIdx + colIdx) % 2 == 0 ? "gainsboro" : "darkGrey" } },
+								piece != "1" && React.createElement("img", { style: { width: "50px", height: "50px" }, src: "/pngs/" + piece + ".png", alt: "" })
 							);
 						}),
 						" "
