@@ -3,6 +3,10 @@
 
 This is a pytorch implementation of Google Deep Mind's AlphaZero algorithm for chess.
 
+## Live
+
+[Play against it here](http://ec2-18-233-98-91.compute-1.amazonaws.com:5000/index.html)
+
 ## Dependencies
 
 Besides standard python libraries, this program requires pytorch set up to run on cuda.
