@@ -14,16 +14,47 @@ var ChessBoard = function (_React$Component) {
 
 		var _this = _possibleConstructorReturn(this, (ChessBoard.__proto__ || Object.getPrototypeOf(ChessBoard)).call(this, props));
 
-		_this.state = { pieces: [["R", "N", "B", "Q", "K", "B", "N", "R"], ["P", "P", "P", "P", "P", "P", "P", "P"], [" ", " ", " ", " ", " ", " ", " ", " "], [" ", " ", " ", " ", " ", " ", " ", " "], [" ", " ", " ", " ", " ", " ", " ", " "], [" ", " ", " ", " ", " ", " ", " ", " "], ["p", "p", "p", "p", "p", "p", "p", "p"], ["r", "n", "b", "q", "k", "b", "n", "r"]], selected: null, turn: "w" };
+		_this.state = { pieces: [["R", "N", "B", "Q", "K", "B", "N", "R"], ["P", "P", "P", "P", "P", "P", "P", "P"], ["1", "1", "1", "1", "1", "1", "1", "1"], ["1", "1", "1", "1", "1", "1", "1", "1"], ["1", "1", "1", "1", "1", "1", "1", "1"], ["1", "1", "1", "1", "1", "1", "1", "1"], ["p", "p", "p", "p", "p", "p", "p", "p"], ["r", "n", "b", "q", "k", "b", "n", "r"]], selected: null, turn: "w" };
 		return _this;
 	}
 
 	_createClass(ChessBoard, [{
-		key: "render",
-		value: function render() {
+		key: "getMoveFromAPI",
+		value: function getMoveFromAPI(pieces, turn) {
 			var _this2 = this;
 
-			console.log(this.state);
+			var fen = pieces[7].join("") + "/" + pieces[6].join("") + "/" + pieces[5].join("") + "/" + pieces[4].join("") + "/" + pieces[3].join("") + "/" + pieces[2].join("") + "/" + pieces[1].join("") + "/" + pieces[0].join("") + " " + turn + " KQkq - 0 1";
+			fen = fen.replace(/\d{2,}/g, function (m) {
+				// get all digit combination, contains more than one digit
+				return m.split('').reduce(function (sum, v) {
+					// split into individual digit
+					return sum + Number(v); // parse and add to sum
+				}, 0); // set initial value as 0 (sum)
+			});
+			var data = new FormData();
+			data.append('fen', fen);
+			fetch('/AI', {
+				method: 'POST',
+				body: data
+			}).then(function (r) {
+				return r.text();
+			}).then(function (r) {
+				var file1 = r.charCodeAt(0) - 'a'.charCodeAt(0);
+				var rank1 = r.charCodeAt(1) - '1'.charCodeAt(0);
+				var file2 = r.charCodeAt(2) - 'a'.charCodeAt(0);
+				var rank2 = r.charCodeAt(3) - '1'.charCodeAt(0);
+
+				pieces[rank2][file2] = pieces[rank1][file1];
+				pieces[rank1][file1] = "1";
+				var newTurn = turn == "w" ? "b" : "w";
+				_this2.setState({ selected: null, pieces: pieces, turn: newTurn });
+			});
+		}
+	}, {
+		key: "render",
+		value: function render() {
+			var _this3 = this;
+
 			return React.createElement(
 				"div",
 				null,
@@ -37,18 +68,20 @@ var ChessBoard = function (_React$Component) {
 							return React.createElement(
 								"button",
 								{ key: colIdx, onClick: function onClick(e) {
-										sIdx = _this2.state.selected;
-										pieces = _this2.state.pieces.slice();
-										if (sIdx == null || pieces[sIdx[1]][sIdx[0]] == " ") {
-											_this2.setState({ selected: [colIdx, 7 - rowIdx] });
+										sIdx = _this3.state.selected;
+										pieces = _this3.state.pieces.slice();
+										if (sIdx == null || pieces[sIdx[1]][sIdx[0]] == "1") {
+											_this3.setState({ selected: [colIdx, 7 - rowIdx] });
 										} else {
 											pieces[7 - rowIdx][colIdx] = pieces[sIdx[1]][sIdx[0]];
-											pieces[sIdx[1]][sIdx[0]] = " ";
-											_this2.setState({ selected: null, pieces: pieces, turn: _this2.state.turn == "w" ? "b" : "w" });
+											pieces[sIdx[1]][sIdx[0]] = "1";
+											var newTurn = _this3.state.turn == "w" ? "b" : "w";
+											_this3.setState({ selected: null, pieces: pieces, turn: newTurn });
+											_this3.getMoveFromAPI(pieces, newTurn);
 										}
 									},
 									style: { outline: "none", border: "none", width: "50px", height: "50px", background: (rowIdx + colIdx) % 2 == 0 ? "gainsboro" : "darkGrey" } },
-								piece != " " && React.createElement("img", { style: { width: "25px", height: "25px" }, src: "/pngs/" + piece + ".png", alt: "" })
+								piece != "1" && React.createElement("img", { style: { width: "25px", height: "25px" }, src: "/pngs/" + piece + ".png", alt: "" })
 							);
 						}),
 						" "
