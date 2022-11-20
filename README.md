@@ -28,4 +28,5 @@ The algorithm is based on [this paper](https://arxiv.org/pdf/1712.01815.pdf). On
 This engine is very weak for chess engine standards. However, its better than all but the top humans. I have only tested it a few times against stockfish running in my browser at [lichess](https://lichess.org/). It was able to beat it, but had to think for about a minute while its opponent only got a few seconds. Compared to most chess engines, like stockfish, which use the Alpha-Beta algorithm and a hand written evaluation function, it evaluates a lot fewer positions every second. Most top programs consider about 45 million chess positions every second, whereas this programs considers about 100, even with GPU and multicore speedups. 
 
 ## Video
-[Drawing Chess.com AI](https://youtu.be/zHTBfBq5PXY)
+* [Drawing Chess.com AI](https://youtu.be/zHTBfBq5PXY)
+* [Training](https://youtu.be/P8i8vAWoTI0)
