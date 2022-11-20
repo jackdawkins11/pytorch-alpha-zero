@@ -7,55 +7,31 @@ from torch.utils.data import DataLoader
 from CCRLDataset import CCRLDataset
 from AlphaZeroNetwork import AlphaZeroNet
 
-import intel_extension_for_pytorch as ipex
-
 #Training params
-num_epochs = 500
-num_blocks = 20
-num_filters = 256
-train_batch_size = 256
-test_batch_size = 1024
-ccrl_root_dir = '/root/cclr-reformated'
+num_epochs = 5
+num_blocks = 10
+num_filters = 128
+ccrl_dir = '/home/ubuntu/pytorch-alpha-zero/cclr-data/train'
 logmode=False
 cuda=False
 
 def train():
+    train_ds = CCRLDataset( ccrl_dir )
+    train_loader = DataLoader( train_ds, batch_size=256, shuffle=True, num_workers=48 )
 
-    #Prepare two torch.utils.data.DataLoader objects for training and testing respectively
-    ccrl_train_dir = os.path.join( ccrl_root_dir, 'train' )
-    
-    ccrl_test_dir = os.path.join( ccrl_root_dir, 'test' )
-
-    train_ds = CCRLDataset( ccrl_train_dir )
-
-    test_ds = CCRLDataset( ccrl_test_dir )
-    
-    train_loader = DataLoader( train_ds, batch_size=train_batch_size, shuffle=True, num_workers=32 )
-   
-    test_loader = DataLoader( test_ds, batch_size=test_batch_size, num_workers=32 )
-
-    #Prepare an untrained AlphaZeroNet instance
     if cuda:
         alphaZeroNet = AlphaZeroNet( num_blocks, num_filters ).cuda()
     else:
         alphaZeroNet = AlphaZeroNet( num_blocks, num_filters )
-
     optimizer = optim.Adam( alphaZeroNet.parameters() )
-
     mseLoss = nn.MSELoss()
 
-    if not logmode:
-        print( 'Starting training' )
+    print( 'Starting training' )
 
     for epoch in range( num_epochs ):
- 
+        
         alphaZeroNet.train()
-
-        if not cuda:
-            alphaZeroNet, optimizer = ipex.optimize(alphaZeroNet, optimizer=optimizer)
-
         for iter_num, data in enumerate( train_loader ):
-            #Each iteration of this loop trains the network with one batch of data
 
             optimizer.zero_grad()
 
@@ -67,6 +43,8 @@ def train():
                 position = data[ 'position' ]
                 valueTarget = data[ 'value' ]
                 policyTarget = data[ 'policy' ]
+
+            # You can manually examine some the training data here
 
             valueLoss, policyLoss = alphaZeroNet( position, valueTarget=valueTarget,
                                  policyTarget=policyTarget )
@@ -87,70 +65,7 @@ def train():
         
         if not logmode:
             print( '' )
-
-        #After doing one pass over all the data we evaluate on test data
- 
-        alphaZeroNet.eval()
-       
-        if not cuda:
-            alphaZeroNet = ipex.optimize(alphaZeroNet)
-
-        num_test_batch = len( test_loader )
-
-        test_value_loss = 0.
-
-        test_policy_loss = 0.
-
-        total_correct_predictions = 0
-
-        with torch.no_grad():
-
-            for iter_num, data in enumerate( test_loader ):
-
-                if cuda:
-                    position = data[ 'position' ].cuda()
-                    valueTarget = data[ 'value' ].cuda()
-                    policyTarget = data[ 'policy' ].cuda()
-                    policyMask = data[ 'mask' ].cuda()
-                else:
-                    position = data[ 'position' ]
-                    valueTarget = data[ 'value' ]
-                    policyTarget = data[ 'policy' ]
-                    policyMask = data[ 'mask' ]
-
-                value, policy = alphaZeroNet( position, policyMask=policyMask )
-
-                valueLoss = mseLoss( value, valueTarget )
-            
-                test_value_loss += float( valueLoss ) / num_test_batch
-
-                policyTarget = policyTarget.view( policyTarget.shape[0] )
-
-                policy = torch.clamp( policy, min=1e-5 )
-
-                policyLoss = torch.log( policy[ torch.arange( policyTarget.shape[0] ), policyTarget ] ).mean()
-            
-                test_policy_loss += float( policyLoss ) / num_test_batch
-
-                correct_predictions = torch.eq( torch.argmax( policy, dim=1 ), policyTarget )
-
-                total_correct_predictions += float( correct_predictions.sum() )
-
-                message = 'Evaluating {:05} / {:05}'.format( iter_num, num_test_batch )
-
-                if not logmode:
-                    if iter_num != 0:
-                        print( ('\b' * len( message ) ), end='' )
-                    print( message, end='', flush=True )
-            
-            if not logmode:
-                print( '' )
-
-        accuracy = 100 * total_correct_predictions / ( test_batch_size * num_test_batch )
-
-        print( 'Evaluation results: value loss {:0.5f} | policy loss {:0.5f} | policy accuracy {:0.5f}%'.format(
-                  test_value_loss, test_policy_loss, accuracy ) )
-
+        
         networkFileName = 'AlphaZeroNet_{}x{}.pt'.format( num_blocks, num_filters ) 
 
         torch.save( alphaZeroNet.state_dict(), networkFileName )
