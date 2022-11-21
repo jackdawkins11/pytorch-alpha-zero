@@ -53,20 +53,20 @@ var ChessBoard = function (_React$Component) {
 					pieces[0][7] = '1';
 				} else if (r == "e1c1" && pieces[0][4] == 'K') {
 					pieces[0][0] = '1';
-					pieces[0][1] = 'K';
-					pieces[0][2] = 'R';
-					pieces[0][3] = '1';
+					pieces[0][1] = '1';
+					pieces[0][2] = 'K';
+					pieces[0][3] = 'R';
 					pieces[0][4] = '1';
 				} else if (r == "e8g8" && pieces[7][4] == 'k') {
 					pieces[7][4] = '1';
 					pieces[7][5] = 'r';
 					pieces[7][6] = 'k';
 					pieces[7][7] = '1';
-				} else if (r == "e1g1" && pieces[0][4] == 'k') {
+				} else if (r == "e8c8" && pieces[7][4] == 'k') {
 					pieces[7][0] = '1';
-					pieces[7][1] = 'k';
-					pieces[7][2] = 'r';
-					pieces[7][3] = '1';
+					pieces[7][1] = '1';
+					pieces[7][2] = 'k';
+					pieces[7][3] = 'r';
 					pieces[7][4] = '1';
 				} else {
 					///normal
@@ -114,9 +114,9 @@ var ChessBoard = function (_React$Component) {
 												pieces[0][7] = '1';
 											} else if (sIdx[1] == 0 && sIdx[0] == 4 && colIdx == 2 && pieces[0][4] == 'K') {
 												pieces[0][0] = '1';
-												pieces[0][1] = 'K';
-												pieces[0][2] = 'R';
-												pieces[0][3] = '1';
+												pieces[0][1] = '1';
+												pieces[0][2] = 'K';
+												pieces[0][3] = 'R';
 												pieces[0][4] = '1';
 											} else if (sIdx[1] == 7 && sIdx[0] == 4 && colIdx == 6 && pieces[7][4] == 'k') {
 												pieces[7][4] = '1';
@@ -125,9 +125,9 @@ var ChessBoard = function (_React$Component) {
 												pieces[7][7] = '1';
 											} else if (sIdx[1] == 7 && sIdx[0] == 4 && colIdx == 2 && pieces[7][4] == 'k') {
 												pieces[7][0] = '1';
-												pieces[7][1] = 'k';
-												pieces[7][2] = 'r';
-												pieces[7][3] = '1';
+												pieces[7][1] = '1';
+												pieces[7][2] = 'k';
+												pieces[7][3] = 'r';
 												pieces[7][4] = '1';
 											} else {
 												///normal
