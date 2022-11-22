@@ -29,4 +29,4 @@ This engine is very weak for chess engine standards. However, its better than al
 
 ## Video
 * [Drawing Chess.com AI](https://youtu.be/zHTBfBq5PXY)
-* [Training](https://youtu.be/P8i8vAWoTI0)
+* [Training](https://youtu.be/IMUqCLswa3s)
