@@ -8,11 +8,11 @@ from CCRLDataset import CCRLDataset
 from AlphaZeroNetwork import AlphaZeroNet
 
 #Training params
-num_epochs = 5
+num_epochs = 40
 num_blocks = 10
 num_filters = 128
-ccrl_dir = '/home/ubuntu/pytorch-alpha-zero/cclr-data/train'
-logmode=False
+ccrl_dir = '/home/ubuntu/pytorch-alpha-zero/ccrl/reformated'
+logmode=True
 cuda=False
 
 def train():
@@ -58,13 +58,13 @@ def train():
             message = 'Epoch {:03} | Step {:05} / {:05} | Value loss {:0.5f} | Policy loss {:0.5f}'.format(
                      epoch, iter_num, len( train_loader ), float( valueLoss ), float( policyLoss ) )
             
-            if not logmode:
-                if iter_num != 0:
-                    print( ('\b' * len(message) ), end='' )
-                print( message, end='', flush=True )
+            if iter_num != 0 and not logmode:
+                print( ('\b' * len(message) ), end='' )
+            print( message, end='', flush=True )
+            if logmode:
+                print('')
         
-        if not logmode:
-            print( '' )
+        print( '' )
         
         networkFileName = 'AlphaZeroNet_{}x{}.pt'.format( num_blocks, num_filters ) 
 
