@@ -15,7 +15,8 @@ def reformat_games( file_names, new_dir, thread_idx ):
             game = chess.pgn.read_game( pgn_fh )
             if not game:
                 break
-            print( game, file=open( os.path.join( new_dir, '{}_{}.pgn'.format( thread_idx, file_name_idx ) ), 'w' ), end='\n\n' )
+            with open(os.path.join( new_dir, '{}_{}.pgn'.format( thread_idx, file_name_idx ), "a") as file:
+                  print(game, file=file, end="\n\n")
             file_name_idx += 1
             if file_name_idx % 1000 == 0:
                 print( 'Thread {} wrote {} train pngs'.format( thread_idx, file_name_idx ) )
